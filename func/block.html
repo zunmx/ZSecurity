@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Error</title>
+    <style>
+        body {
+            width: 35em;
+            margin: 0 auto;
+            font-family: Tahoma, Verdana, Arial, sans-serif;
+        }
+    </style>
+    <script>
+        console.log("ALC-WebApplicationFirewall...") // from ALC-waf..
+    </script>
+</head>
+<body>
+<h1>Direct access for IP</h1>
+<p>Ohh, the page you are looking for is currently unavailable.<br/>
+    All right, We are not allowed access by IP</p>
+<p>We suspect you are scanning my site</p>
+<p><em>Message by WAF</em></p>
+
+<hr/>
+<h1>IP直接访答</h1>
+<p>哦吼,这个页面看起来好像不太正常吧.<br/>
+    是啊,我们不允许通过IP直接访问</p>
+<p>我们怀疑您正在扫描我的网站</p>
+<p><em>消息来自网络应用防火墙</em></p>
+
+<hr/>
+<h1> IP面接の回答</h1>
+<p>ああ、このページは正常に見えません。<br/>
+    はい、IP経由での直接アクセスは許可されていません</p>
+<p>あなたが私のウェブサイトをスキャンしていると思われます</p>
+<p><em>私が誰であるかを尋ねないでください。私は誰も望んでいない子供です</em></p>
+
+<hr/>
+<h1> IP 직접 인터뷰 답변 </h1>
+<p>이 페이지가 정상적으로 보이지 않습니다. <br/>
+    예, IP를 통한 직접 액세스를 허용하지 않습니다. </p>
+<p> 내 웹 사이트를 스캔하고있는 것 같습니다. </p>
+<p><em> 내가 누구인지 묻지 마세요. 나는 아무도 원하지 않는 아이입니다. </em></p>
+
+</body>
+</html>
+
+<html>
+<script>
+    var r = 255;
+    var g = 255;
+    var b = 255;
+    setInterval(function () {
+        switch (parseInt((Math.random() * 100) % 3)) {
+            case 0:
+                r -= Math.random() + Math.random() * 10;
+                break;
+            case 1:
+                g -= Math.random() + Math.random() * 10;
+                break;
+            case 2:
+                b -= Math.random() + Math.random() * 10;
+                break;
+        }
+        var color ="#"+Math.floor(r).toString(16).replaceAll('-','')+Math.floor(g).toString(16).replaceAll('-','')+Math.floor(b).toString(16).replaceAll('-','');
+        document.bgColor = color;
+    }, 100)
+    setTimeout(function () {
+        window.location.href ="http://127.0.0.1";//fuck you to your localhost
+    }, 10000)
+</script>
+</html>

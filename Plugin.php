@@ -6,51 +6,18 @@ if (!defined('__TYPECHO_ROOT_DIR__')) exit;
  *
  * @package ZSecurity
  * @author Zunmx
- * @version 1.0.2
+ * @version 1.0.2.520 β
  * @link https://www.zunmx.top
+ *
+ * @Source https://github.com/zunmx/ZSecurity
  */
 class ZSecurity_Plugin implements Typecho_Plugin_Interface
 {
+    // 本插件的静态路径
     const STATIC_DIR = '/usr/plugins/ZSecurity/static';
 
-    /**
-     * 激活插件方法,如果激活失败,直接抛出异常
-     *
-     * @access public
-     * @return void
-     * @throws Typecho_Plugin_Exception
-     */
-    public static function activate()
-    {
-
-        Typecho_Plugin::factory('admin/menu.php')->navBar = array('ZSecurity_Plugin', 'render');
-        Typecho_Plugin::factory('Widget_Archive')->header = array(__CLASS__, 'header');
-        Typecho_Plugin::factory('Widget_Archive')->footer = array(__CLASS__, 'footer');
-
-    }
-
-    /**
-     * 禁用插件方法,如果禁用失败,直接抛出异常
-     *
-     * @static
-     * @access public
-     * @return void
-     * @throws Typecho_Plugin_Exception
-     */
-    public static function deactivate()
-    {
-    }
-
-    /**
-     * 获取插件配置面板
-     *
-     * @access public
-     * @param Typecho_Widget_Helper_Form $form 配置面板
-     * @return void
-     */
-    public static function config(Typecho_Widget_Helper_Form $form)
-    {
-        $defaultAntiDev = <<<EOF
+    // 抵抗开发者工具的默认脚本
+    const defaultAntiDev = <<<EOF
 <script>
 setInterval(function () { 
 $("html").append("<scr"+"ipt id='wng'>function devToolNotice() { try{antiDebug_Clear();}catch{}   $.message({        title: '检测到异常行为或指令',        message: '建站不易，趴站可耻。感谢配合。鞠躬',        type: 'error',        time: '3000'    });}</scr"+"ipt>")
@@ -89,6 +56,55 @@ return false;
 </script>
 EOF;
 
+    const WAF_STATUS = array([
+        "MAYBE_CHANGE" => 0,
+        "SAVED" => 1
+    ]);
+
+
+    /**
+     * 激活插件方法,如果激活失败,直接抛出异常
+     *
+     * @access public
+     * @return void
+     * @throws Typecho_Plugin_Exception
+     */
+    public static function activate()
+    {
+        Typecho_Plugin::factory('admin/menu.php')->navBar = array('ZSecurity_Plugin', 'render');
+        Typecho_Plugin::factory('Widget_Archive')->header = array(__CLASS__, 'header');
+        Typecho_Plugin::factory('Widget_Archive')->footer = array(__CLASS__, 'footer');
+        return '插件安装成功~';
+    }
+
+    /**
+     * 禁用插件方法,如果禁用失败,直接抛出异常
+     *
+     * @static
+     * @access public
+     * @return void
+     * @throws Typecho_Plugin_Exception
+     */
+    public static function deactivate()
+    {
+        self::writeConf(""); // 注销WAF配置
+        return '插件卸载成功~';
+    }
+
+    /**
+     * 获取插件配置面板
+     *
+     * @access public
+     * @param Typecho_Widget_Helper_Form $form 配置面板
+     * @return void
+     */
+    public static function config(Typecho_Widget_Helper_Form $form)
+    {
+        if (isset($_GET['action']) && $_GET['action'] == 'activeWAF') {
+            self::activeWAF();
+        }
+
+
         /** 分类名称 */
         $form->addInput(new My_Title('btnTitle', NULL, NULL, _t('插件设置'), NULL));
         $name = new Typecho_Widget_Helper_Form_Element_Radio('tip_switch', array(0 => _t('不显示'), 1 => _t('显示')), 1, _t('管理页面是否显示顶部提示 <span style="color:blue;font-weight:bold;">点击跳转到设置页面</span>'));
@@ -96,24 +112,39 @@ EOF;
         $name = new Typecho_Widget_Helper_Form_Element_Text('word', NULL, '[√] ZSecurity', _t('顶部提示'));
         $form->addInput($name);
 
+
+        $form->addInput(new My_Title('btnTitle', NULL, NULL, _t('轻量级防火墙 (WAF-WebApplicationFirewall)'), NULL));
+
+        $name = new Typecho_Widget_Helper_Form_Element_Radio('waf_switch', array(0 => _t('禁用'), 1 => _t('启动')), 1, _t('轻量级站点防火墙[总开关] <span style="color:red;font-weight:bold;">使用前建议进行整站备份</span>'));
+        $form->addInput($name);
+
+        $name = new Typecho_Widget_Helper_Form_Element_Text('host_ip', NULL, $_SERVER["HTTP_HOST"], _t('禁止通过IP访问'), _t('<span style="color:red;font-weight:bold;">通常设置为公网IP，如果您的公网IP为10.10.121.43，服务端口号为88，那么这里需要设置为10.10.121.43:88，注意英文半角的端口号，如果默认80端口，可以不写。不需要加协议名。留空为不设置</span>'));
+        $form->addInput($name);
+        $name = new Typecho_Widget_Helper_Form_Element_Text('domainLock', NULL, "", _t('域名绑定'), _t("检查域名是否为设置的域名，相当于白名单，只能通过域名访问。<br/>" . '<span style="color:red;font-weight:bold;">如果设置的域名不正确，可能导致无法进入网站，留空为不设置，否则需要填写自己的域名！不需要加协议，如果有端口加上端口号，规则同上</span>'));
+        $form->addInput($name);
+        $name = new Typecho_Widget_Helper_Form_Element_Text('redirect', NULL, "", _t('违规跳转页面'), _t('<span style="color:red;font-weight:bold;">当违反WAF规则时，跳转的页面，需要详细地址(带协议名例如http://127.0.0.1)，不填为默认响应</span>'));
+        $form->addInput($name);
+        $name = new Typecho_Widget_Helper_Form_Element_Radio('anti_iframe', array(0 => _t('禁用'), 1 => _t('启动')), 1, _t('禁止iframe嵌套'), _t('阻止别人通过iframe标签显示在其他网站上'));
+        $form->addInput($name);
+
+
         $form->addInput(new My_Title('btnTitle', NULL, NULL, _t('反盗版'), NULL));
         $name = new Typecho_Widget_Helper_Form_Element_Radio('antiDebug_switch', array(0 => _t('禁用'), 1 => _t('启动')), 1, _t('简单阻止开发者工具 <span style="color:red;font-weight:bold;"> 这里的js不进行转义</span>'));
         $form->addInput($name);
         $name = new Typecho_Widget_Helper_Form_Element_Radio('antiDebug_Clear', array(0 => _t('禁用'), 1 => _t('启动')), 0, _t('当发现开发者工具进行页面清空 <span style="color:red;font-weight:bold;">不建议开启，可能存在误判</span>[阻止开发者工具启动时有效]'));
         $form->addInput($name);
-
-        $name = new Typecho_Widget_Helper_Form_Element_Textarea('antiDevtool', NULL, $defaultAntiDev, _t('脚本内容'));
+        $name = new Typecho_Widget_Helper_Form_Element_Textarea('antiDevtool', NULL, self::defaultAntiDev, _t('脚本内容'));
         $form->addInput($name);
         $name = new Typecho_Widget_Helper_Form_Element_Radio('copyPlus', array(0 => _t('禁用'), 1 => _t('启动')), 1, _t('页面复制加版权信息'));
         $form->addInput($name);
-        $name = new Typecho_Widget_Helper_Form_Element_Text('copyText',NULL, "尊暮萧", _t('版权作者'));
+        $name = new Typecho_Widget_Helper_Form_Element_Text('copyText', NULL, "尊暮萧", _t('版权作者'));
         $form->addInput($name);
 
         $form->addInput(new My_Title('btnTitle', NULL, NULL, _t('外观设置'), NULL));
-        $name = new Typecho_Widget_Helper_Form_Element_Radio('JSCDN', array(0 => _t('本地'), 1 => _t('BootCDN') ,2 =>'75CDN',3 =>'七牛云'), 1, _t('JS源'));
+        $name = new Typecho_Widget_Helper_Form_Element_Radio('JSCDN', array(0 => _t('本地'), 1 => _t('BootCDN'), 2 => '75CDN', 3 => '七牛云'), 1, _t('JS源'));
         $form->addInput($name);
 
-        $name = new Typecho_Widget_Helper_Form_Element_Radio('clickStyle', array(0 => _t('禁用'), 1 => _t('emoji') ,2 =>'爆炸气泡'), 1, _t('鼠标点击特效 <span style="color:red;font-weight:bold;">爆炸特效不建议开启</span>'));
+        $name = new Typecho_Widget_Helper_Form_Element_Radio('clickStyle', array(0 => _t('禁用'), 1 => _t('emoji'), 2 => '爆炸气泡'), 1, _t('鼠标点击特效 <span style="color:red;font-weight:bold;">爆炸特效不建议开启</span>'));
         $form->addInput($name);
         $name = new Typecho_Widget_Helper_Form_Element_Radio('grayStyle', array(0 => _t('禁用'), 1 => _t('启动')), 1, _t('公祭日页面灰度'));
         $form->addInput($name);
@@ -132,6 +163,101 @@ EOF;
         $form->addInput($bubbleType);
 
 
+    }
+
+    public static function activeWAF()
+    {
+
+        if (Typecho_Cookie::get("__zs_waf") != "1") {
+            return;
+        }
+        $myself = Helper::options()->plugin('ZSecurity'); // 获取配置
+        if ($myself->waf_switch == 1) {  // 防火墙状态：启动
+            Typecho_Cookie::set("__zs_waf", "1");
+            // func路径
+            $funcPath = dirname(__FILE__) . "/func/";
+            $funcPath = str_replace("\\", "/", $funcPath);
+            // 获取配置信息中的内容
+            $host_ip = $myself->host_ip;
+            $domainLock = $myself->domainLock;
+            $anti_iframe = $myself->anti_iframe;
+            $redirect = $myself->redirect;
+
+            // 写入文件
+            $zkInfo = "<?php $" . <<<EOF
+zkInfo = array(
+    'ip' => "$host_ip",
+    'domain' => "$domainLock",
+    'redirect' => "$redirect"
+);
+?>
+EOF;
+
+
+            Typecho_Cookie::set("__zs_waf", 1); //设置waf状态，下次就进不来了。
+            if (file_exists($funcPath . "ZSConfig.php")) {  // 判断配置文件是否存在
+                file_put_contents($funcPath . "ZSConfig.php", $zkInfo);  // 修改配置文件
+
+                // 写主入口程序
+                if ($anti_iframe == "1") {
+                    $tmp = <<<EOF
+
+header("X-Frame-Options: deny"); //ZSecurity 请勿修改
+header("X-XSS-Protection: 0"); //ZSecurity 请勿修改
+
+EOF;
+                }
+
+
+                $tmp .= 'include_once(' . '"' . $funcPath . 'check.php"' . ');  //ZSecurity 请勿修改';
+                self::writeConf($tmp);
+
+
+                //echo "<script>alert('ZSConfig--mod')</script>";
+            } else { // ZSConfig.php 文件不存在
+                throw new Typecho_Plugin_Exception(_t('WAF配置文件丢失' . $funcPath . "ZSConfig.php"));
+            }
+
+
+        } else {
+            self::writeConf("");
+        }
+    }
+
+
+    public static function writeConf($content)
+    {
+        try {
+
+            $filePath = $_SERVER["CONTEXT_DOCUMENT_ROOT"] . "/index.php";
+            $file = fopen($filePath, "r"); // 以只读的方式打开文件
+            if (empty($file)) {
+                throw new Typecho_Plugin_Exception(_t('index.php 不存在'));
+            }
+            //遍历文本中所有的行，直到文件结束为止。
+
+            while (!feof($file)) {
+                $itemStr = fgets($file); //fgets()函数从文件指针中读取一行
+                $flag = strpos($itemStr, "//ZSecurity");
+                if (!$flag) {
+                    $result .= $itemStr;
+                }
+            }
+            fclose($file);
+            $result = trim($result);
+            if ($content == "") {
+                file_put_contents($filePath, $result);  // 修改配置文件
+            } else {
+                $result = "<?php //ZSecurity 请勿修改 " . PHP_EOL . $content . PHP_EOL . "?><!-- //ZSecurity 请勿修改-->" . PHP_EOL . $result;
+                file_put_contents($filePath, $result);  // 修改配置文件
+            }
+
+
+        } catch (Exception $exception) {
+
+            throw new Typecho_Plugin_Exception(_t('操作失败！' . $exception));
+        }
+        return true;
     }
 
 
@@ -155,9 +281,10 @@ EOF;
      */
     public static function render()
     {
-        $myself = Helper::options()->plugin('ZSecurity');
-        if ($myself->tip_switch == "1")  // 标识
 
+        $myself = Helper::options()->plugin('ZSecurity');
+//        self::activeWAF(); //能力有限，不知道如何触发一次。 TODO: 保存时触发事件！
+        if ($myself->tip_switch == "1")  // 标识
             echo '<a href="';
         Helper::options()->adminUrl();
         echo 'options-plugin.php?config=ZSecurity'
@@ -165,7 +292,7 @@ EOF;
             . htmlspecialchars(Typecho_Widget::widget('Widget_Options')->plugin('ZSecurity')->word)
             . '</a>';
 
-
+//        echo "<script>alert('123')</script>";
     }
 
     public static function header()
@@ -174,9 +301,9 @@ EOF;
 
         if ($myself->antiDebug_switch == "1") {  // 禁止调试
 
-            echo $myself->antiDevtool ;
-            if($myself->antiDebug_Clear == "1"){
-                echo '<script>'.<<<EOF
+            echo $myself->antiDevtool;
+            if ($myself->antiDebug_Clear == "1") {
+                echo '<script>' . <<<EOF
         function antiDebug_Clear(){
             $("html").html("");
         }
@@ -214,14 +341,23 @@ EOF;
             echo <<<EOF
 <canvas id="fireworks" style="position:fixed;left:0;top:0;pointer-events:none;z-index: 999999"></canvas>
 EOF;
-            switch($myself->JSCDN){
-                case "0": echo '<script type="text/javascript" src= ".self::STATIC_DIR."/js/anime2.2.0.min.js"></script>'; break;
-                case "1": echo '<script src="https://cdn.bootcdn.net/ajax/libs/animejs/2.2.0/anime.js"></script>'; break;
-                case "2": echo '<script type="text/javascript" src= "https://lib.baomitu.com/animejs/2.2.0/anime.min.js"></script>'; break;
-                case "3": echo '<script type="text/javascript" src= "https://cdn.staticfile.org/animejs/2.2.0/anime.min.js"></script>'; break;
-                default : echo '<script type="text/javascript" src= ".self::STATIC_DIR."/js/anime2.2.0.min.js"></script>';
+            switch ($myself->JSCDN) {
+                case "0":
+                    echo '<script type="text/javascript" src= ".self::STATIC_DIR."/js/anime2.2.0.min.js"></script>';
+                    break;
+                case "1":
+                    echo '<script src="https://cdn.bootcdn.net/ajax/libs/animejs/2.2.0/anime.js"></script>';
+                    break;
+                case "2":
+                    echo '<script type="text/javascript" src= "https://lib.baomitu.com/animejs/2.2.0/anime.min.js"></script>';
+                    break;
+                case "3":
+                    echo '<script type="text/javascript" src= "https://cdn.staticfile.org/animejs/2.2.0/anime.min.js"></script>';
+                    break;
+                default :
+                    echo '<script type="text/javascript" src= ".self::STATIC_DIR."/js/anime2.2.0.min.js"></script>';
             }
-            echo "<script type='text/javascript' src='".self::STATIC_DIR."/js/fireworks.js'></script>";
+            echo "<script type='text/javascript' src='" . self::STATIC_DIR . "/js/fireworks.js'></script>";
 
         }
 
@@ -250,7 +386,7 @@ function setClipboardText(event) {
     }
 }
 EOF
-        . "</script>";
+                . "</script>";
         }
 
         if ($myself->grayStyle == "1") { // 公祭日
@@ -299,8 +435,8 @@ EOF;
     }
 
 
-
 }
+
 class My_Title extends Typecho_Widget_Helper_Form_Element
 {
 
@@ -322,6 +458,7 @@ class My_Title extends Typecho_Widget_Helper_Form_Element
         $this->inputs[] = $input;
         return $input;
     }
+
     protected function _value($value)
     {
     }
@@ -329,3 +466,24 @@ class My_Title extends Typecho_Widget_Helper_Form_Element
 
 }
 
+// TODO: BUTTON当前为一，后期如果增加button需要修改
+// 由于WAF写入文件无法触发，通过Ajax异步处理。通过jQuery的Ajax实现双重方法的提交。
+
+echo <<<EOF
+<script>
+window.onload=function(){
+$("button").click(function(){
+    setTimeout(function(){
+    $.ajax({
+        url: '
+EOF;
+echo Helper::options()->adminUrl."options-plugin.php?config=ZSecurity&action=activeWAF',";
+echo <<<EOF
+        type: "GET",
+        async:"true"
+    })
+},1000);
+}); }
+</script>
+
+EOF;
