@@ -6,7 +6,7 @@ if (!defined('__TYPECHO_ROOT_DIR__')) exit;
  *
  * @package ZSecurity
  * @author Zunmx
- * @version 1.0.1
+ * @version 1.0.2
  * @link https://www.zunmx.top
  */
 class ZSecurity_Plugin implements Typecho_Plugin_Interface
@@ -53,7 +53,8 @@ class ZSecurity_Plugin implements Typecho_Plugin_Interface
         $defaultAntiDev = <<<EOF
 <script>
 setInterval(function () { 
-$("html").append("<scr"+"ipt>function devToolNotice() { try{antiDebug_Clear();}catch{}   $.message({        title: '检测到异常行为或指令',        message: '建站不易，趴站可耻。感谢配合。鞠躬',        type: 'error',        time: '3000'    });}</scr"+"ipt>")
+$("html").append("<scr"+"ipt id='wng'>function devToolNotice() { try{antiDebug_Clear();}catch{}   $.message({        title: '检测到异常行为或指令',        message: '建站不易，趴站可耻。感谢配合。鞠躬',        type: 'error',        time: '3000'    });}</scr"+"ipt>")
+$("script[id = wng]").remove()
 var t1 = new Date().getTime(); debugger; var t2 = new Date().getTime(); if ((t2 - t1 > 1)||(window.outerWidth - window.innerWidth > 160 )||  (window.outerHeight - window.innerHeight > 160)) { devToolNotice() }console.clear(); }, 520); // 叼毛，不要调试我。  
  
 
@@ -98,7 +99,7 @@ EOF;
         $form->addInput(new My_Title('btnTitle', NULL, NULL, _t('反盗版'), NULL));
         $name = new Typecho_Widget_Helper_Form_Element_Radio('antiDebug_switch', array(0 => _t('禁用'), 1 => _t('启动')), 1, _t('简单阻止开发者工具 <span style="color:red;font-weight:bold;"> 这里的js不进行转义</span>'));
         $form->addInput($name);
-        $name = new Typecho_Widget_Helper_Form_Element_Radio('antiDebug_Clear', array(0 => _t('禁用'), 1 => _t('启动')), 1, _t('当发现开发者工具进行页面清空 <span style="color:red;font-weight:bold;">不建议开启，可能存在误判</span>'));
+        $name = new Typecho_Widget_Helper_Form_Element_Radio('antiDebug_Clear', array(0 => _t('禁用'), 1 => _t('启动')), 0, _t('当发现开发者工具进行页面清空 <span style="color:red;font-weight:bold;">不建议开启，可能存在误判</span>[阻止开发者工具启动时有效]'));
         $form->addInput($name);
 
         $name = new Typecho_Widget_Helper_Form_Element_Textarea('antiDevtool', NULL, $defaultAntiDev, _t('脚本内容'));
@@ -109,6 +110,9 @@ EOF;
         $form->addInput($name);
 
         $form->addInput(new My_Title('btnTitle', NULL, NULL, _t('外观设置'), NULL));
+        $name = new Typecho_Widget_Helper_Form_Element_Radio('JSCDN', array(0 => _t('本地'), 1 => _t('BootCDN') ,2 =>'75CDN',3 =>'七牛云'), 1, _t('JS源'));
+        $form->addInput($name);
+
         $name = new Typecho_Widget_Helper_Form_Element_Radio('clickStyle', array(0 => _t('禁用'), 1 => _t('emoji') ,2 =>'爆炸气泡'), 1, _t('鼠标点击特效 <span style="color:red;font-weight:bold;">爆炸特效不建议开启</span>'));
         $form->addInput($name);
         $name = new Typecho_Widget_Helper_Form_Element_Radio('grayStyle', array(0 => _t('禁用'), 1 => _t('启动')), 1, _t('公祭日页面灰度'));
@@ -126,9 +130,6 @@ EOF;
         ];
         $bubbleType = new Typecho_Widget_Helper_Form_Element_Radio('mouseType', $options, 'dew', _t('鼠标样式'));
         $form->addInput($bubbleType);
-
-
-
 
 
     }
@@ -157,7 +158,7 @@ EOF;
         $myself = Helper::options()->plugin('ZSecurity');
         if ($myself->tip_switch == "1")  // 标识
 
-            echo '<a class="message warning" href="';
+            echo '<a href="';
         Helper::options()->adminUrl();
         echo 'options-plugin.php?config=ZSecurity'
             . '">'
@@ -184,13 +185,13 @@ EOF;
             }
         }
         $myself = Helper::options()->plugin('ZSecurity');
-        if ($myself->clickStyle == "1") { // 鼠标样式
+        if ($myself->clickStyle == "1") { // 鼠标特效样式
             echo <<<EOF
 <script>
 
 var a = new Array("🙂", "🙋‍", "😀", "😃", "😄", "😁", "😆", "😅", "🤣", "😂", "🙂", "🙃", "😉", "😊", "😇", "🥰", "😍", "🤩", "😘", "😗", "😚", "😙", "😋", "😛", "😜", "🤪", "😝", "🤑", "🤗", "🤭", "🤔", "🤐", "🤨", "😐", "😑", "😶", "😏", "😒", "🙄", "😬", "🤥", "😌", "😔", "😪", "🤤", "😴", "😷", "🤒", "🤕", "🤢", "🤮", "🤧", "🥵", "🥶", "🥴", "😵", "🤯", "🤠", "🥳", "😎", "🤓", "🧐", "😕", "😟", "🙁", "☹️", "😮", "😯", "😲", "😳", "🥺", "😦", "😧", "😨", "😰", "😥", "😢", "😭", "😱", "😖", "😣", "😞", "😓", "😩", "😫", "🥱", "😤", "😡", "😠", "🤬", "💋", "💍", "🌈", "👽", "💘", "💓", "💔", "💕", "💖", "💗", "💙", "💚", "💛", "💜", "💝", "💞", "💟");
     function emojiMouse(e) {
-        var a_idx = parseInt((Math.random() * 1000)) % a.length;
+        var a_idx = parseInt((Math.random() * 100)) % a.length;
         var sp = $("<span/>").text(a[a_idx]);
         var x = e.pageX, y = e.pageY;
         sp.css({ "z-index": 9999999999999, "top": y - 20, "left": x, "position": "absolute", "font-weight": "bold", "color": "#ff6651" });
@@ -209,11 +210,17 @@ var a = new Array("🙂", "🙋‍", "😀", "😃", "😄", "😁", "😆", "�
 
 EOF;
         }
-        if ($myself->clickStyle == "2") { // 鼠标样式
+        if ($myself->clickStyle == "2") { // 鼠标特效样式
             echo <<<EOF
 <canvas id="fireworks" style="position:fixed;left:0;top:0;pointer-events:none;z-index: 999999"></canvas>
 EOF;
-            echo "<script type='text/javascript' src='".self::STATIC_DIR."/js/anime2.2.0.min.js'></script>";
+            switch($myself->JSCDN){
+                case "0": echo '<script type="text/javascript" src= ".self::STATIC_DIR."/js/anime2.2.0.min.js"></script>'; break;
+                case "1": echo '<script src="https://cdn.bootcdn.net/ajax/libs/animejs/2.2.0/anime.js"></script>'; break;
+                case "2": echo '<script type="text/javascript" src= "https://lib.baomitu.com/animejs/2.2.0/anime.min.js"></script>'; break;
+                case "3": echo '<script type="text/javascript" src= "https://cdn.staticfile.org/animejs/2.2.0/anime.min.js"></script>'; break;
+                default : echo '<script type="text/javascript" src= ".self::STATIC_DIR."/js/anime2.2.0.min.js"></script>';
+            }
             echo "<script type='text/javascript' src='".self::STATIC_DIR."/js/fireworks.js'></script>";
 
         }
@@ -243,11 +250,10 @@ function setClipboardText(event) {
     }
 }
 EOF
-                . "</script>";
+        . "</script>";
         }
 
         if ($myself->grayStyle == "1") { // 公祭日
-
             echo <<<EOF
 
 <script>
@@ -256,7 +262,6 @@ EOF
             var dt = new Date();
             var dt2 = dt.getMonth() + 1 + "" + dt.getDate()
             if (dt2 == "918" || dt2 == "1213" ) {flag = true;}
-
             if (flag) {
                 $("html").css({
                     "filter": "gray !important",
@@ -269,8 +274,6 @@ EOF
                 });
             }
             })
-            
-
 </script>
 EOF;
         }
@@ -281,9 +284,7 @@ EOF;
 POWERMODE.colorful=true;POWERMODE.shake=false;document.body.addEventListener("input",POWERMODE);
 </script>
 EOF;
-
         }
-
         $mouseType = $myself->mouseType;
         $imageDir = self::STATIC_DIR . '/image';
         if ($mouseType != 'none') {
@@ -291,9 +292,10 @@ EOF;
 <script>
 $("body").css("cursor", "url('{$imageDir}/{$mouseType}/normal.cur'), default");
 $("a").css("cursor", "url('{$imageDir}/{$mouseType}/link.cur'), pointer");
-</script>;
+</script>
 EOF;
         }
+
     }
 
 
@@ -309,7 +311,6 @@ class My_Title extends Typecho_Widget_Helper_Form_Element
             $this->label = new Typecho_Widget_Helper_Layout('label', array('class' => 'typecho-label', 'style' => 'font-size: 1.5em;border-bottom: 1px #ddd solid;padding-top:1em;'));
             $this->container($this->label);
         }
-
         $this->label->html($value);
         return $this;
     }
@@ -321,7 +322,6 @@ class My_Title extends Typecho_Widget_Helper_Form_Element
         $this->inputs[] = $input;
         return $input;
     }
-
     protected function _value($value)
     {
     }
