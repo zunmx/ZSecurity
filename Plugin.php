@@ -6,7 +6,7 @@ if (!defined('__TYPECHO_ROOT_DIR__')) exit;
  *
  * @package ZSecurity
  * @author Zunmx
- * @version 1.0.2.520 β
+ * @version 1.0.2.521 β
  * @link https://www.zunmx.top
  *
  * @Source https://github.com/zunmx/ZSecurity
@@ -167,13 +167,8 @@ EOF;
 
     public static function activeWAF()
     {
-
-        if (Typecho_Cookie::get("__zs_waf") != "1") {
-            return;
-        }
         $myself = Helper::options()->plugin('ZSecurity'); // 获取配置
         if ($myself->waf_switch == 1) {  // 防火墙状态：启动
-            Typecho_Cookie::set("__zs_waf", "1");
             // func路径
             $funcPath = dirname(__FILE__) . "/func/";
             $funcPath = str_replace("\\", "/", $funcPath);
@@ -193,8 +188,6 @@ zkInfo = array(
 ?>
 EOF;
 
-
-            Typecho_Cookie::set("__zs_waf", 1); //设置waf状态，下次就进不来了。
             if (file_exists($funcPath . "ZSConfig.php")) {  // 判断配置文件是否存在
                 file_put_contents($funcPath . "ZSConfig.php", $zkInfo);  // 修改配置文件
 
@@ -466,24 +459,36 @@ class My_Title extends Typecho_Widget_Helper_Form_Element
 
 }
 
-// TODO: BUTTON当前为一，后期如果增加button需要修改
-// 由于WAF写入文件无法触发，通过Ajax异步处理。通过jQuery的Ajax实现双重方法的提交。
+// TODO: form.button当前为一，后期如果增加需要修改
+// 由于WAF写入文件无法触发，顺序执行解决方案。 有点繁琐了。实在是想不出什么办法了。
 
 echo <<<EOF
 <script>
 window.onload=function(){
+   
+$("form").prop("onSubmit","return false"); // 拦截默认提交
+    
 $("button").click(function(){
-    setTimeout(function(){
+$.ajax({
+  url:$("form").attr("action"),
+  type:"post",
+  async:false,
+  data:$("form").serialize(),
+  success:function(){
     $.ajax({
         url: '
 EOF;
 echo Helper::options()->adminUrl."options-plugin.php?config=ZSecurity&action=activeWAF',";
 echo <<<EOF
         type: "GET",
-        async:"true"
-    })
-},1000);
-}); }
+        success:function(){
+            $("form").prop("onSubmit","return true;"); // 拦截默认提交
+            $("form").submit();
+        }
+    }
+   );// 提交waf修改
+}})})
+}
 </script>
 
 EOF;
