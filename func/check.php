@@ -1,7 +1,6 @@
 <?php
 header("X-Powered-By:ALC_SmileLang");
 header("Server:ALC_WebServer");
-header("Servers:ALC_WebServer");
 header("Waf:ALC_WAF_0xf2");
 
 include_once("ZSConfig.php");
