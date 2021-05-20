@@ -1,10 +1,11 @@
-﻿<?php
+<?php
 header("X-Powered-By:ALC_SmileLang");
 header("Server:ALC_WebServer");
 header("Servers:ALC_WebServer");
 header("Waf:ALC_WAF_0xf2");
 
 include_once("ZSConfig.php");
+//echo $zkInfo["domain"]."---".$_SERVER['HTTP_HOST'] . strcmp($_SERVER['HTTP_HOST'], $zkInfo["domain"]);
 function zlog($content)
 {
     echo '<script>console.log("' . $content . '")</script>';
@@ -15,7 +16,7 @@ ob_start();
 if ($zkInfo["ip"] == "") {
 //    zlog("ip留空");
 } else {
-    if (strcmp($_SERVER['HTTP_HOST'], $zkInfo["ip"])) { // 主机名等于ip地址
+    if (strcmp($_SERVER['HTTP_HOST'], $zkInfo["ip"])==0) { // 主机名等于ip地址
         blockPage($zkInfo["redirect"]);
         exit();
     }
@@ -24,7 +25,7 @@ if ($zkInfo["ip"] == "") {
 if ($zkInfo["domain"] == "") {
 //    zlog("domain留空");
 } else {
-    if (strcasecmp($_SERVER['HTTP_HOST'], $zkInfo["domain"])) { // 主机名等于ip地址
+    if (strcmp($_SERVER['HTTP_HOST'], $zkInfo["domain"])!=0) { // 主机名不等于域名
         blockPage($zkInfo["redirect"]);
         exit();
     }

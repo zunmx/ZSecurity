@@ -6,7 +6,7 @@ if (!defined('__TYPECHO_ROOT_DIR__')) exit;
  *
  * @package ZSecurity
  * @author Zunmx
- * @version 1.0.2.520 β
+ * @version 1.0.2.5211 β
  * @link https://www.zunmx.top
  *
  * @Source https://github.com/zunmx/ZSecurity
@@ -167,13 +167,8 @@ EOF;
 
     public static function activeWAF()
     {
-
-        if (Typecho_Cookie::get("__zs_waf") != "1") {
-            return;
-        }
         $myself = Helper::options()->plugin('ZSecurity'); // 获取配置
         if ($myself->waf_switch == 1) {  // 防火墙状态：启动
-            Typecho_Cookie::set("__zs_waf", "1");
             // func路径
             $funcPath = dirname(__FILE__) . "/func/";
             $funcPath = str_replace("\\", "/", $funcPath);
@@ -193,8 +188,6 @@ zkInfo = array(
 ?>
 EOF;
 
-
-            Typecho_Cookie::set("__zs_waf", 1); //设置waf状态，下次就进不来了。
             if (file_exists($funcPath . "ZSConfig.php")) {  // 判断配置文件是否存在
                 file_put_contents($funcPath . "ZSConfig.php", $zkInfo);  // 修改配置文件
 
@@ -248,7 +241,7 @@ EOF;
             if ($content == "") {
                 file_put_contents($filePath, $result);  // 修改配置文件
             } else {
-                $result = "<?php //ZSecurity 请勿修改 " . PHP_EOL . $content . PHP_EOL . "?><!-- //ZSecurity 请勿修改-->" . PHP_EOL . $result;
+                $result = "<?php //ZSecurity 请勿修改 " . PHP_EOL . $content . PHP_EOL . "/*//ZSecurity 请勿修改*/?>" . PHP_EOL . $result;
                 file_put_contents($filePath, $result);  // 修改配置文件
             }
 
@@ -315,7 +308,6 @@ EOF;
         if ($myself->clickStyle == "1") { // 鼠标特效样式
             echo <<<EOF
 <script>
-
 var a = new Array("🙂", "🙋‍", "😀", "😃", "😄", "😁", "😆", "😅", "🤣", "😂", "🙂", "🙃", "😉", "😊", "😇", "🥰", "😍", "🤩", "😘", "😗", "😚", "😙", "😋", "😛", "😜", "🤪", "😝", "🤑", "🤗", "🤭", "🤔", "🤐", "🤨", "😐", "😑", "😶", "😏", "😒", "🙄", "😬", "🤥", "😌", "😔", "😪", "🤤", "😴", "😷", "🤒", "🤕", "🤢", "🤮", "🤧", "🥵", "🥶", "🥴", "😵", "🤯", "🤠", "🥳", "😎", "🤓", "🧐", "😕", "😟", "🙁", "☹️", "😮", "😯", "😲", "😳", "🥺", "😦", "😧", "😨", "😰", "😥", "😢", "😭", "😱", "😖", "😣", "😞", "😓", "😩", "😫", "🥱", "😤", "😡", "😠", "🤬", "💋", "💍", "🌈", "👽", "💘", "💓", "💔", "💕", "💖", "💗", "💙", "💚", "💛", "💜", "💝", "💞", "💟");
     function emojiMouse(e) {
         var a_idx = parseInt((Math.random() * 100)) % a.length;
@@ -334,7 +326,6 @@ var a = new Array("🙂", "🙋‍", "😀", "😃", "😄", "😁", "😆", "�
 
  //启动事件，鼠标特效
 </script>
-
 EOF;
         }
         if ($myself->clickStyle == "2") { // 鼠标特效样式
@@ -369,7 +360,6 @@ EOF;
         if ($myself->copyPlus == "1") { // 复制版权
 
             echo "<script>" . <<<EOF
-
 $(function() {
   document.body.addEventListener('copy', function (e) {
     if (window.getSelection().toString() && window.getSelection().toString().length > 10) {
@@ -385,13 +375,12 @@ function setClipboardText(event) {
         clipboardData.setData('text/plain',htmlData.replaceAll("<br/>","\\r\\n"));
     }
 }
-EOF
-                . "</script>";
+EOF;
+         echo "</script>";
         }
 
         if ($myself->grayStyle == "1") { // 公祭日
             echo <<<EOF
-
 <script>
             $(function(){
                 var flag = false;
@@ -466,24 +455,35 @@ class My_Title extends Typecho_Widget_Helper_Form_Element
 
 }
 
-// TODO: BUTTON当前为一，后期如果增加button需要修改
-// 由于WAF写入文件无法触发，通过Ajax异步处理。通过jQuery的Ajax实现双重方法的提交。
+// TODO: form.button当前为一，后期如果增加需要修改
+// 由于WAF写入文件无法触发，顺序执行解决方案。 有点繁琐了。实在是想不出什么办法了。
 
 echo <<<EOF
 <script>
 window.onload=function(){
+   
+$("form").prop("onSubmit","return false"); // 拦截默认提交
+    
 $("button").click(function(){
-    setTimeout(function(){
+$.ajax({
+  url:$("form").attr("action"),
+  type:"post",
+  async:false,
+  data:$("form").serialize(),
+  success:function(){
     $.ajax({
         url: '
 EOF;
 echo Helper::options()->adminUrl."options-plugin.php?config=ZSecurity&action=activeWAF',";
 echo <<<EOF
         type: "GET",
-        async:"true"
-    })
-},1000);
-}); }
+        success:function(){
+            $("form").prop("onSubmit","return true;"); // 拦截默认提交
+            $("form").submit();
+        }
+    }
+   );// 提交waf修改
+}})})
+}
 </script>
-
 EOF;
