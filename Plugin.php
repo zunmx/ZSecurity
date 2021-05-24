@@ -6,15 +6,20 @@ if (!defined('__TYPECHO_ROOT_DIR__')) exit;
  *
  * @package ZSecurity
  * @author Zunmx
- * @version 1.0.2.5211 β
+ * @version 1.0.6 β
  * @link https://www.zunmx.top
  *
  * @Source https://github.com/zunmx/ZSecurity
  */
+// TODO: 修复了插件全局的JS导致按钮失效
 class ZSecurity_Plugin implements Typecho_Plugin_Interface
 {
     // 本插件的静态路径
     const STATIC_DIR = '/usr/plugins/ZSecurity/static';
+    // 本插件的静态路径
+    const PLUGIN_DIR = '/usr/plugins/ZSecurity/';
+    // 本插件的方法路径
+    const FUNC_DIR = '/usr/plugins/ZSecurity/func';
 
     // 抵抗开发者工具的默认脚本
     const defaultAntiDev = <<<EOF
@@ -104,7 +109,6 @@ EOF;
             self::activeWAF();
         }
 
-
         /** 分类名称 */
         $form->addInput(new My_Title('btnTitle', NULL, NULL, _t('插件设置'), NULL));
         $name = new Typecho_Widget_Helper_Form_Element_Radio('tip_switch', array(0 => _t('不显示'), 1 => _t('显示')), 1, _t('管理页面是否显示顶部提示 <span style="color:blue;font-weight:bold;">点击跳转到设置页面</span>'));
@@ -114,8 +118,12 @@ EOF;
 
 
         $form->addInput(new My_Title('btnTitle', NULL, NULL, _t('轻量级防火墙 (WAF-WebApplicationFirewall)'), NULL));
+        $form->addInput($name);
 
-        $name = new Typecho_Widget_Helper_Form_Element_Radio('waf_switch', array(0 => _t('禁用'), 1 => _t('启动')), 1, _t('轻量级站点防火墙[总开关] <span style="color:red;font-weight:bold;">使用前建议进行整站备份</span>'));
+        $queryBtn = new Typecho_Widget_Helper_Layout("hr", array());
+        $form->addItem($queryBtn);
+
+        $name = new Typecho_Widget_Helper_Form_Element_Radio('waf_switch', array(0 => _t('禁用'), 1 => _t('启动')), 1, _t('🔺 轻量级站点防火墙[总开关] <span style="color:red;font-weight:bold;">使用前建议进行整站备份</span>'));
         $form->addInput($name);
 
         $name = new Typecho_Widget_Helper_Form_Element_Text('host_ip', NULL, $_SERVER["HTTP_HOST"], _t('禁止通过IP访问'), _t('<span style="color:red;font-weight:bold;">通常设置为公网IP，如果您的公网IP为10.10.121.43，服务端口号为88，那么这里需要设置为10.10.121.43:88，注意英文半角的端口号，如果默认80端口，可以不写。不需要加协议名。留空为不设置</span>'));
@@ -125,6 +133,32 @@ EOF;
         $name = new Typecho_Widget_Helper_Form_Element_Text('redirect', NULL, "", _t('违规跳转页面'), _t('<span style="color:red;font-weight:bold;">当违反WAF规则时，跳转的页面，需要详细地址(带协议名例如http://127.0.0.1)，不填为默认响应</span>'));
         $form->addInput($name);
         $name = new Typecho_Widget_Helper_Form_Element_Radio('anti_iframe', array(0 => _t('禁用'), 1 => _t('启动')), 1, _t('禁止iframe嵌套'), _t('阻止别人通过iframe标签显示在其他网站上'));
+        $form->addInput($name);
+
+
+        $queryBtn = new Typecho_Widget_Helper_Layout("hr", array());
+        $form->addItem($queryBtn);
+
+        $name = new Typecho_Widget_Helper_Form_Element_Radio('anti_cc', array(0 => _t('禁用'), 1 => _t('启动')), 1, _t('🔺 抵御CC攻击总开关 <span style="color:red;font-weight:bold;">以下内容切勿多出额外字符，并且需要启动上面的WAF</span>'), _t('采用Redis数据库，封禁高频访问，也可以用来反爬'));
+        $form->addInput($name);
+        $queryBtn = new Typecho_Widget_Helper_Layout("a", array('id' => 'checkRedisButton', 'class' => 'btn primary', 'style' => 'padding-top:1em;float:right;', "onclick" => "RedisTest()"));
+        $queryBtn->html("测试连接");
+        $queryBtn->appendTo($name);
+        $name = new Typecho_Widget_Helper_Form_Element_Text('anti_cc_redisIp', NULL, "127.0.0.1", _t('redis数据库地址'));
+        $form->addInput($name);
+        $name = new Typecho_Widget_Helper_Form_Element_Text('anti_cc_redisPort', NULL, "6379", _t('redis数据库端口号'));
+        $form->addInput($name);
+
+
+        $name = new Typecho_Widget_Helper_Form_Element_Text('anti_cc_block_same_sec', NULL, "50", _t('同IP访问几 次/分钟 相同页面触发'),_t("当为-1时为禁用此项"));
+        $form->addInput($name);
+        $name = new Typecho_Widget_Helper_Form_Element_Text('anti_cc_block_diff_sec', NULL, "100", _t('同IP访问几 次/分钟 不相同页面触发'),_t("当为-1时为禁用此项"));
+        $form->addInput($name);
+        $name = new Typecho_Widget_Helper_Form_Element_Text('anti_cc_block_time', NULL, "60", _t('封禁IP时间，单位秒'));
+        $form->addInput($name);
+        $name = new Typecho_Widget_Helper_Form_Element_Text('anti_cc_block_clean', NULL, "3600", _t('Redis缓存清空时间 单位秒'),_t("由于是基于内存的缓存，内存资源占用过大可能导致应用不稳定，定期清空缓存有利于减缓内存压力。"));
+        $form->addInput($name);
+        $name = new Typecho_Widget_Helper_Form_Element_Text('anti_cc_ip_allow', NULL, "123.56.220.252,127.0.0.1", _t('IP白名单，逗号分割多IP。通常用来搜索引擎收录IP以及自己的IP'));
         $form->addInput($name);
 
 
@@ -162,11 +196,12 @@ EOF;
         $bubbleType = new Typecho_Widget_Helper_Form_Element_Radio('mouseType', $options, 'dew', _t('鼠标样式'));
         $form->addInput($bubbleType);
 
-
+        self::printMyJS();
     }
 
     public static function activeWAF()
     {
+
         $myself = Helper::options()->plugin('ZSecurity'); // 获取配置
         if ($myself->waf_switch == 1) {  // 防火墙状态：启动
             // func路径
@@ -177,13 +212,29 @@ EOF;
             $domainLock = $myself->domainLock;
             $anti_iframe = $myself->anti_iframe;
             $redirect = $myself->redirect;
+            $cc_switch = $myself->anti_cc;
+            $redis_ip = $myself->anti_cc_redisIp;
+            $redis_port = $myself->anti_cc_redisPort;
+            $cc_same_sec = $myself->anti_cc_block_same_sec;
+            $cc_diff_sec = $myself->anti_cc_block_diff_sec;
+            $cc_block_time = $myself->anti_cc_block_time;
+            $cc_ip_allow = $myself->anti_cc_ip_allow;
+            $cc_ip_clean = $myself->anti_cc_block_clean;
 
             // 写入文件
             $zkInfo = "<?php $" . <<<EOF
 zkInfo = array(
     'ip' => "$host_ip",
     'domain' => "$domainLock",
-    'redirect' => "$redirect"
+    'redirect' => "$redirect",
+    'cc' => "$cc_switch",
+    'redis_ip' => "$redis_ip",
+    'redis_port' => "$redis_port",
+    'cc_same_sec' => "$cc_same_sec",
+    'cc_diff_sec' => "$cc_diff_sec",
+    'cc_block_time' => "$cc_block_time",
+    'cc_ip_allow' => "$cc_ip_allow",
+    'cc_ip_clean' => "$cc_ip_clean",
 );
 ?>
 EOF;
@@ -200,8 +251,6 @@ header("X-XSS-Protection: 0"); //ZSecurity 请勿修改
 
 EOF;
                 }
-
-
                 $tmp .= 'include_once(' . '"' . $funcPath . 'check.php"' . ');  //ZSecurity 请勿修改';
                 self::writeConf($tmp);
 
@@ -215,6 +264,15 @@ EOF;
         } else {
             self::writeConf("");
         }
+
+
+        // CC REDIS MODULE
+        if ($myself->anti_cc == "1") {
+
+
+        }
+
+
     }
 
 
@@ -276,7 +334,6 @@ EOF;
     {
 
         $myself = Helper::options()->plugin('ZSecurity');
-//        self::activeWAF(); //能力有限，不知道如何触发一次。 TODO: 保存时触发事件！
         if ($myself->tip_switch == "1")  // 标识
             echo '<a href="';
         Helper::options()->adminUrl();
@@ -284,8 +341,6 @@ EOF;
             . '">'
             . htmlspecialchars(Typecho_Widget::widget('Widget_Options')->plugin('ZSecurity')->word)
             . '</a>';
-
-//        echo "<script>alert('123')</script>";
     }
 
     public static function header()
@@ -376,7 +431,7 @@ function setClipboardText(event) {
     }
 }
 EOF;
-         echo "</script>";
+            echo "</script>";
         }
 
         if ($myself->grayStyle == "1") { // 公祭日
@@ -422,13 +477,63 @@ EOF;
         }
 
     }
+// TODO: form.button当前为一，后期如果增加需要修改
+// 由于WAF写入文件无法触发，顺序执行解决方案。 有点繁琐了。实在是想不出什么办法了。
+    public static function printMyJS()
+    {
+        echo <<<EOF
+<script>
+window.onload=function(){
+   
+$("form").prop("onSubmit","return false"); // 拦截默认提交
+    
+$("button").click(function(){
+$.ajax({
+  url:$("form").attr("action"),
+  type:"post",
+  async:false,
+  data:$("form").serialize(),
+  success:function(){
+    $.ajax({
+        url: '
+EOF;
+        echo Helper::options()->adminUrl . "options-plugin.php?config=ZSecurity&action=activeWAF',";
+        echo <<<EOF
+        type: "GET",
+        success:function(){
+            $("form").prop("onSubmit","return true;"); // 拦截默认提交
+            $("form").submit();
+        }
+    });// 提交waf修改
+}})})
+}
+</script>
+EOF;
+        echo <<<EOF
+<script>
+function RedisTest (){
+$.ajax({
+        url: '
+EOF;
+        echo self::FUNC_DIR . "/Anti_CC.php?action=testRedis',";
+        echo <<<EOF
+        type: "POST",
+        data: $("form").serialize(),
+        success:function(e){
+            $("#checkRedisButton").text(e);
+        }
+    }
+   );// 提交waf修改
+   }
+   </script>
+EOF;
 
 
+    }
 }
 
 class My_Title extends Typecho_Widget_Helper_Form_Element
 {
-
     public function label($value)
     {
         /** 创建标题元素 */
@@ -455,35 +560,5 @@ class My_Title extends Typecho_Widget_Helper_Form_Element
 
 }
 
-// TODO: form.button当前为一，后期如果增加需要修改
-// 由于WAF写入文件无法触发，顺序执行解决方案。 有点繁琐了。实在是想不出什么办法了。
 
-echo <<<EOF
-<script>
-window.onload=function(){
-   
-$("form").prop("onSubmit","return false"); // 拦截默认提交
-    
-$("button").click(function(){
-$.ajax({
-  url:$("form").attr("action"),
-  type:"post",
-  async:false,
-  data:$("form").serialize(),
-  success:function(){
-    $.ajax({
-        url: '
-EOF;
-echo Helper::options()->adminUrl."options-plugin.php?config=ZSecurity&action=activeWAF',";
-echo <<<EOF
-        type: "GET",
-        success:function(){
-            $("form").prop("onSubmit","return true;"); // 拦截默认提交
-            $("form").submit();
-        }
-    }
-   );// 提交waf修改
-}})})
-}
-</script>
-EOF;
+

