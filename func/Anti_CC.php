@@ -1,10 +1,11 @@
 <?php
 include_once("ZSConfig.php");
-global $conn, $ip, $port, $cc_same_sec, $cc_diff_sec, $cc_block_time, $cc_ip_allow, $block_page, $cc_ip_clean;
+global $conn, $ip, $port, $cc_same_sec, $cc_diff_sec, $cc_block_time, $cc_ip_allow, $block_page, $cc_ip_clean, $pwd;
 
 $ip = strval($zkInfo["redis_ip"]);
 $block_page = strval($zkInfo["redirect"]);
 $port = intval($zkInfo["redis_port"]);
+$pwd = strval($zkInfo["cc_redispasswd"]); // 缓存失效时间
 $cc_same_sec = intval($zkInfo["cc_same_sec"]);  // 相同页面
 $cc_diff_sec = intval($zkInfo["cc_diff_sec"]); // 不同页面
 $cc_block_time = intval($zkInfo["cc_block_time"]); // 封禁时间
@@ -20,7 +21,8 @@ function testRedis()
 {
     try {
         $redis = new Redis();
-        $redis->pconnect(strval($_POST['anti_cc_redisIp']), strval($_POST['anti_cc_redisPort']));
+        $redis->connect(strval($_POST['anti_cc_redisIp']), strval($_POST['anti_cc_redisPort']));
+        $redis->auth(strval($_POST['anti_cc_redispasswd']));
         $redis->set("ALC_ZSecurityTest", "ZSecurity_Redis_Link_Test", 10);
         echo "[√] 连接成功";
     } catch (\Exception $e) {
@@ -30,7 +32,7 @@ function testRedis()
 
 function log_redis()
 {
-    global $conn, $ip, $port, $cc_same_sec, $cc_diff_sec, $cc_block_time, $cc_ip_allow, $block_page, $cc_ip_clean;
+    global $conn, $ip, $port, $cc_same_sec, $cc_diff_sec, $cc_block_time, $cc_ip_allow, $block_page, $cc_ip_clean, $pwd;
 
 
     if (in_array($_SERVER["REMOTE_ADDR"], explode(",", $cc_ip_allow))) { // 允许过度访问。  // TODO 下一个版本可以考虑通过修改htaccess
@@ -39,6 +41,7 @@ function log_redis()
 
     $conn = new Redis();  // TODO: 会拖慢效率，那位大佬会写PHP的单例，我试了试每次都会创建，有点懵。
     $conn->pconnect($ip, $port);
+    $conn->auth($pwd);
     $conn->lPush($_SERVER["REMOTE_ADDR"], $_SERVER["REQUEST_URI"] . "<=U-D=>" . time());
     $conn->expireAt($_SERVER["REMOTE_ADDR"], intval(time()) + $cc_ip_clean);
 

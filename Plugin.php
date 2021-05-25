@@ -6,12 +6,11 @@ if (!defined('__TYPECHO_ROOT_DIR__')) exit;
  *
  * @package ZSecurity
  * @author Zunmx
- * @version 1.0.6 β
+ * @version 1.0.7
  * @link https://www.zunmx.top
  *
  * @Source https://github.com/zunmx/ZSecurity
  */
-// TODO: 修复了插件全局的JS导致按钮失效
 class ZSecurity_Plugin implements Typecho_Plugin_Interface
 {
     // 本插件的静态路径
@@ -60,12 +59,6 @@ return false;
     
 </script>
 EOF;
-
-    const WAF_STATUS = array([
-        "MAYBE_CHANGE" => 0,
-        "SAVED" => 1
-    ]);
-
 
     /**
      * 激活插件方法,如果激活失败,直接抛出异常
@@ -118,17 +111,13 @@ EOF;
 
 
         $form->addInput(new My_Title('btnTitle', NULL, NULL, _t('轻量级防火墙 (WAF-WebApplicationFirewall)'), NULL));
-        $form->addInput($name);
-
-        $queryBtn = new Typecho_Widget_Helper_Layout("hr", array());
-        $form->addItem($queryBtn);
 
         $name = new Typecho_Widget_Helper_Form_Element_Radio('waf_switch', array(0 => _t('禁用'), 1 => _t('启动')), 1, _t('🔺 轻量级站点防火墙[总开关] <span style="color:red;font-weight:bold;">使用前建议进行整站备份</span>'));
         $form->addInput($name);
 
-        $name = new Typecho_Widget_Helper_Form_Element_Text('host_ip', NULL, $_SERVER["HTTP_HOST"], _t('禁止通过IP访问'), _t('<span style="color:red;font-weight:bold;">通常设置为公网IP，如果您的公网IP为10.10.121.43，服务端口号为88，那么这里需要设置为10.10.121.43:88，注意英文半角的端口号，如果默认80端口，可以不写。不需要加协议名。留空为不设置</span>'));
+        $name = new Typecho_Widget_Helper_Form_Element_Text('host_ip', NULL, gethostbyname($_SERVER["HTTP_HOST"]), _t('禁止通过IP访问'), _t('<span style="color:red;font-weight:bold;">通常设置为公网IP，如果您的公网IP为10.10.121.43，服务端口号为88，那么这里需要设置为10.10.121.43:88，注意英文半角的端口号，如果默认80端口，可以不写。不需要加协议名。留空为不设置</span>'));
         $form->addInput($name);
-        $name = new Typecho_Widget_Helper_Form_Element_Text('domainLock', NULL, "", _t('域名绑定'), _t("检查域名是否为设置的域名，相当于白名单，只能通过域名访问。<br/>" . '<span style="color:red;font-weight:bold;">如果设置的域名不正确，可能导致无法进入网站，留空为不设置，否则需要填写自己的域名！不需要加协议，如果有端口加上端口号，规则同上</span>'));
+        $name = new Typecho_Widget_Helper_Form_Element_Text('domainLock', NULL, $_SERVER["HTTP_HOST"], _t('域名绑定'), _t("检查域名是否为设置的域名，相当于白名单，只能通过域名访问。<br/>" . '<span style="color:red;font-weight:bold;">如果设置的域名不正确，可能导致无法进入网站，留空为不设置，否则需要填写自己的域名！不需要加协议，如果有端口加上端口号，规则同上</span>'));
         $form->addInput($name);
         $name = new Typecho_Widget_Helper_Form_Element_Text('redirect', NULL, "", _t('违规跳转页面'), _t('<span style="color:red;font-weight:bold;">当违反WAF规则时，跳转的页面，需要详细地址(带协议名例如http://127.0.0.1)，不填为默认响应</span>'));
         $form->addInput($name);
@@ -148,7 +137,8 @@ EOF;
         $form->addInput($name);
         $name = new Typecho_Widget_Helper_Form_Element_Text('anti_cc_redisPort', NULL, "6379", _t('redis数据库端口号'));
         $form->addInput($name);
-
+        $name = new Typecho_Widget_Helper_Form_Element_Text('anti_cc_redispasswd', NULL, "", _t('redis数据库密码'));
+        $form->addInput($name);
 
         $name = new Typecho_Widget_Helper_Form_Element_Text('anti_cc_block_same_sec', NULL, "50", _t('同IP访问几 次/分钟 相同页面触发'),_t("当为-1时为禁用此项"));
         $form->addInput($name);
@@ -220,6 +210,7 @@ EOF;
             $cc_block_time = $myself->anti_cc_block_time;
             $cc_ip_allow = $myself->anti_cc_ip_allow;
             $cc_ip_clean = $myself->anti_cc_block_clean;
+            $cc_redispasswd = $myself->anti_cc_redispasswd;
 
             // 写入文件
             $zkInfo = "<?php $" . <<<EOF
@@ -235,6 +226,7 @@ zkInfo = array(
     'cc_block_time' => "$cc_block_time",
     'cc_ip_allow' => "$cc_ip_allow",
     'cc_ip_clean' => "$cc_ip_clean",
+    'cc_redispasswd' => "$cc_redispasswd",
 );
 ?>
 EOF;
@@ -260,18 +252,9 @@ EOF;
                 throw new Typecho_Plugin_Exception(_t('WAF配置文件丢失' . $funcPath . "ZSConfig.php"));
             }
 
-
         } else {
             self::writeConf("");
         }
-
-
-        // CC REDIS MODULE
-        if ($myself->anti_cc == "1") {
-
-
-        }
-
 
     }
 
@@ -305,7 +288,6 @@ EOF;
 
 
         } catch (Exception $exception) {
-
             throw new Typecho_Plugin_Exception(_t('操作失败！' . $exception));
         }
         return true;
@@ -478,7 +460,6 @@ EOF;
 
     }
 // TODO: form.button当前为一，后期如果增加需要修改
-// 由于WAF写入文件无法触发，顺序执行解决方案。 有点繁琐了。实在是想不出什么办法了。
     public static function printMyJS()
     {
         echo <<<EOF

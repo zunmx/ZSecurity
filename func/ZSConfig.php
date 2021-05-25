@@ -10,5 +10,6 @@
     'cc_block_time' => "60",
     'cc_ip_allow' => "123.56.220.252，127.0.0.1",
     'cc_ip_clean' => "3600",
+    'cc_redispasswd' => "6379",
 );
 ?>
