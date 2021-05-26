@@ -6,7 +6,7 @@ if (!defined('__TYPECHO_ROOT_DIR__')) exit;
  *
  * @package ZSecurity
  * @author Zunmx
- * @version 1.0.7
+ * @version 1.0.8
  * @link https://www.zunmx.top
  *
  * @Source https://github.com/zunmx/ZSecurity
@@ -119,7 +119,7 @@ EOF;
         $form->addInput($name);
         $name = new Typecho_Widget_Helper_Form_Element_Text('domainLock', NULL, $_SERVER["HTTP_HOST"], _t('域名绑定'), _t("检查域名是否为设置的域名，相当于白名单，只能通过域名访问。<br/>" . '<span style="color:red;font-weight:bold;">如果设置的域名不正确，可能导致无法进入网站，留空为不设置，否则需要填写自己的域名！不需要加协议，如果有端口加上端口号，规则同上</span>'));
         $form->addInput($name);
-        $name = new Typecho_Widget_Helper_Form_Element_Text('redirect', NULL, "", _t('违规跳转页面'), _t('<span style="color:red;font-weight:bold;">当违反WAF规则时，跳转的页面，需要详细地址(带协议名例如http://127.0.0.1)，不填为默认响应</span>'));
+        $name = new Typecho_Widget_Helper_Form_Element_Text('redirect', NULL, "", _t('违规跳转页面'), _t('<span style="color:red;font-weight:bold;">当违反WAF规则时，跳转的页面，需要详细地址(带协议名例如http://127.0.0.1)，不填为插件默认的响应</span>'));
         $form->addInput($name);
         $name = new Typecho_Widget_Helper_Form_Element_Radio('anti_iframe', array(0 => _t('禁用'), 1 => _t('启动')), 1, _t('禁止iframe嵌套'), _t('阻止别人通过iframe标签显示在其他网站上'));
         $form->addInput($name);
@@ -186,6 +186,10 @@ EOF;
         $bubbleType = new Typecho_Widget_Helper_Form_Element_Radio('mouseType', $options, 'dew', _t('鼠标样式'));
         $form->addInput($bubbleType);
 
+        // 辅助功能
+        $form->addInput(new My_Title('btnTitle', NULL, NULL, _t('<span style="color: #ff8d5a">辅助功能</span>'), NULL));
+        $name = new Typecho_Widget_Helper_Form_Element_Radio('autoHttps', array(0 => _t('禁用'), 1 => _t('启动')), 0, _t('自动跳转到HTTPS页面'),_t("要配置好https的有关配置哦"));
+        $form->addInput($name);
         self::printMyJS();
     }
 
@@ -328,7 +332,11 @@ EOF;
     public static function header()
     {
         $myself = Helper::options()->plugin('ZSecurity');
-
+        if($myself->autoHttps=="1"){//https
+            if(!isset($_SERVER['HTTPS']) || $_SERVER['HTTPS'] != 'on' ){
+                header('Location: https://'.$_SERVER['SERVER_NAME'].$_SERVER['REQUEST_URI']);exit();
+            }
+        }
         if ($myself->antiDebug_switch == "1") {  // 禁止调试
 
             echo $myself->antiDevtool;
