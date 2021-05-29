@@ -6,7 +6,7 @@ if (!defined('__TYPECHO_ROOT_DIR__')) exit;
  *
  * @package ZSecurity
  * @author Zunmx
- * @version 1.0.8
+ * @version 1.0.9
  * @link https://www.zunmx.top
  *
  * @Source https://github.com/zunmx/ZSecurity
@@ -101,6 +101,7 @@ EOF;
         if (isset($_GET['action']) && $_GET['action'] == 'activeWAF') {
             self::activeWAF();
         }
+        $form->addInput(new Typecho_Widget_Helper_Form_Element_Hidden("ZSecurityToken",null,md5("ZSecurity-%z^u&n#m@x-!".strval($_SERVER["PATH"])))) ;
 
         /** 分类名称 */
         $form->addInput(new My_Title('btnTitle', NULL, NULL, _t('插件设置'), NULL));
@@ -133,6 +134,9 @@ EOF;
         $queryBtn = new Typecho_Widget_Helper_Layout("a", array('id' => 'checkRedisButton', 'class' => 'btn primary', 'style' => 'padding-top:1em;float:right;', "onclick" => "RedisTest()"));
         $queryBtn->html("测试连接");
         $queryBtn->appendTo($name);
+        $_SESSION["ZSecurity-RedisTest"] = 1; // 可以测试Redis
+
+
         $name = new Typecho_Widget_Helper_Form_Element_Text('anti_cc_redisIp', NULL, "127.0.0.1", _t('redis数据库地址'));
         $form->addInput($name);
         $name = new Typecho_Widget_Helper_Form_Element_Text('anti_cc_redisPort', NULL, "6379", _t('redis数据库端口号'));
@@ -140,13 +144,13 @@ EOF;
         $name = new Typecho_Widget_Helper_Form_Element_Text('anti_cc_redispasswd', NULL, "", _t('redis数据库密码'));
         $form->addInput($name);
 
-        $name = new Typecho_Widget_Helper_Form_Element_Text('anti_cc_block_same_sec', NULL, "50", _t('同IP访问几 次/分钟 相同页面触发'),_t("当为-1时为禁用此项"));
+        $name = new Typecho_Widget_Helper_Form_Element_Text('anti_cc_block_same_sec', NULL, "50", _t('同IP访问几 次/分钟 相同页面触发'), _t("当为-1时为禁用此项"));
         $form->addInput($name);
-        $name = new Typecho_Widget_Helper_Form_Element_Text('anti_cc_block_diff_sec', NULL, "100", _t('同IP访问几 次/分钟 不相同页面触发'),_t("当为-1时为禁用此项"));
+        $name = new Typecho_Widget_Helper_Form_Element_Text('anti_cc_block_diff_sec', NULL, "100", _t('同IP访问几 次/分钟 不相同页面触发'), _t("当为-1时为禁用此项"));
         $form->addInput($name);
         $name = new Typecho_Widget_Helper_Form_Element_Text('anti_cc_block_time', NULL, "60", _t('封禁IP时间，单位秒'));
         $form->addInput($name);
-        $name = new Typecho_Widget_Helper_Form_Element_Text('anti_cc_block_clean', NULL, "3600", _t('Redis缓存清空时间 单位秒'),_t("由于是基于内存的缓存，内存资源占用过大可能导致应用不稳定，定期清空缓存有利于减缓内存压力。"));
+        $name = new Typecho_Widget_Helper_Form_Element_Text('anti_cc_block_clean', NULL, "3600", _t('Redis缓存清空时间 单位秒'), _t("由于是基于内存的缓存，内存资源占用过大可能导致应用不稳定，定期清空缓存有利于减缓内存压力。"));
         $form->addInput($name);
         $name = new Typecho_Widget_Helper_Form_Element_Text('anti_cc_ip_allow', NULL, "123.56.220.252,127.0.0.1", _t('IP白名单，逗号分割多IP。通常用来搜索引擎收录IP以及自己的IP'));
         $form->addInput($name);
@@ -188,14 +192,13 @@ EOF;
 
         // 辅助功能
         $form->addInput(new My_Title('btnTitle', NULL, NULL, _t('<span style="color: #ff8d5a">辅助功能</span>'), NULL));
-        $name = new Typecho_Widget_Helper_Form_Element_Radio('autoHttps', array(0 => _t('禁用'), 1 => _t('启动')), 0, _t('自动跳转到HTTPS页面'),_t("要配置好https的有关配置哦"));
+        $name = new Typecho_Widget_Helper_Form_Element_Radio('autoHttps', array(0 => _t('禁用'), 1 => _t('启动')), 0, _t('自动跳转到HTTPS页面'), _t("要配置好https的有关配置哦"));
         $form->addInput($name);
         self::printMyJS();
     }
 
     public static function activeWAF()
     {
-
         $myself = Helper::options()->plugin('ZSecurity'); // 获取配置
         if ($myself->waf_switch == 1) {  // 防火墙状态：启动
             // func路径
@@ -266,14 +269,13 @@ EOF;
     public static function writeConf($content)
     {
         try {
-
             $filePath = $_SERVER["CONTEXT_DOCUMENT_ROOT"] . "/index.php";
             $file = fopen($filePath, "r"); // 以只读的方式打开文件
             if (empty($file)) {
                 throw new Typecho_Plugin_Exception(_t('index.php 不存在'));
             }
             //遍历文本中所有的行，直到文件结束为止。
-
+            self::zlog("entry..1" . $content);
             while (!feof($file)) {
                 $itemStr = fgets($file); //fgets()函数从文件指针中读取一行
                 $flag = strpos($itemStr, "//ZSecurity");
@@ -332,9 +334,10 @@ EOF;
     public static function header()
     {
         $myself = Helper::options()->plugin('ZSecurity');
-        if($myself->autoHttps=="1"){//https
-            if(!isset($_SERVER['HTTPS']) || $_SERVER['HTTPS'] != 'on' ){
-                header('Location: https://'.$_SERVER['SERVER_NAME'].$_SERVER['REQUEST_URI']);exit();
+        if ($myself->autoHttps == "1") {//https
+            if (!isset($_SERVER['HTTPS']) || $_SERVER['HTTPS'] != 'on') {
+                header('Location: https://' . $_SERVER['SERVER_NAME'] . $_SERVER['REQUEST_URI']);
+                exit();
             }
         }
         if ($myself->antiDebug_switch == "1") {  // 禁止调试
@@ -467,14 +470,17 @@ EOF;
         }
 
     }
+
 // TODO: form.button当前为一，后期如果增加需要修改
     public static function printMyJS()
     {
+
         echo <<<EOF
 <script>
 window.onload=function(){
    
 $("form").prop("onSubmit","return false"); // 拦截默认提交
+    
     
 $("button").click(function(){
 $.ajax({
@@ -490,7 +496,7 @@ EOF;
         echo <<<EOF
         type: "GET",
         success:function(){
-            $("form").prop("onSubmit","return true;"); // 拦截默认提交
+            $("form").prop("onSubmit","return true;"); // 取消拦截默认提交
             $("form").submit();
         }
     });// 提交waf修改
