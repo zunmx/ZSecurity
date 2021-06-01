@@ -1,4 +1,11 @@
 <?php
+if ($_GET['action'] == 'testRedis') {
+    if($_POST["ZSecurityToken"]==md5("ZSecurity-%z^u&n#m@x-!".strval($_SERVER["PATH"]))){
+        testRedis();
+    }else{
+        header("location: http://".$_SERVER["HTTP_HOST"]); //跳转到首页。
+    }
+}
 include_once("ZSConfig.php");
 global $conn, $ip, $port, $cc_same_sec, $cc_diff_sec, $cc_block_time, $cc_ip_allow, $block_page, $cc_ip_clean, $pwd;
 error_reporting(0); // 隐藏PHP的日志信息
@@ -11,16 +18,6 @@ $cc_diff_sec = intval($zkInfo["cc_diff_sec"]); // 不同页面
 $cc_block_time = intval($zkInfo["cc_block_time"]); // 封禁时间
 $cc_ip_allow = strval($zkInfo["cc_ip_allow"]); // 允许IP
 $cc_ip_clean = strval($zkInfo["cc_ip_clean"]); // 缓存失效时间
-
-
-if ($_GET['action'] == 'testRedis') {
-    if($_POST["ZSecurityToken"]==md5("ZSecurity-%z^u&n#m@x-!".strval($_SERVER["PATH"]))){
-        testRedis();
-    }else{
-        header("location: http://".$_SERVER["HTTP_HOST"]); //跳转到首页。
-    }
-
-}
 
 function testRedis()
 {

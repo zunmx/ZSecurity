@@ -6,7 +6,7 @@ if (!defined('__TYPECHO_ROOT_DIR__')) exit;
  *
  * @package ZSecurity
  * @author Zunmx
- * @version 1.0.9
+ * @version 1.1.0
  * @link https://www.zunmx.top
  *
  * @Source https://github.com/zunmx/ZSecurity
@@ -101,7 +101,7 @@ EOF;
         if (isset($_GET['action']) && $_GET['action'] == 'activeWAF') {
             self::activeWAF();
         }
-        $form->addInput(new Typecho_Widget_Helper_Form_Element_Hidden("ZSecurityToken",null,md5("ZSecurity-%z^u&n#m@x-!".strval($_SERVER["PATH"])))) ;
+        $form->addInput(new Typecho_Widget_Helper_Form_Element_Hidden("ZSecurityToken", null, md5("ZSecurity-%z^u&n#m@x-!" . strval($_SERVER["PATH"]))));
 
         /** 分类名称 */
         $form->addInput(new My_Title('btnTitle', NULL, NULL, _t('插件设置'), NULL));
@@ -194,6 +194,8 @@ EOF;
         $form->addInput(new My_Title('btnTitle', NULL, NULL, _t('<span style="color: #ff8d5a">辅助功能</span>'), NULL));
         $name = new Typecho_Widget_Helper_Form_Element_Radio('autoHttps', array(0 => _t('禁用'), 1 => _t('启动')), 0, _t('自动跳转到HTTPS页面'), _t("要配置好https的有关配置哦"));
         $form->addInput($name);
+
+
         self::printMyJS();
     }
 
@@ -275,7 +277,6 @@ EOF;
                 throw new Typecho_Plugin_Exception(_t('index.php 不存在'));
             }
             //遍历文本中所有的行，直到文件结束为止。
-            self::zlog("entry..1" . $content);
             while (!feof($file)) {
                 $itemStr = fgets($file); //fgets()函数从文件指针中读取一行
                 $flag = strpos($itemStr, "//ZSecurity");
@@ -430,23 +431,21 @@ EOF;
         if ($myself->grayStyle == "1") { // 公祭日
             echo <<<EOF
 <script>
-            $(function(){
-                var flag = false;
-            var dt = new Date();
-            var dt2 = dt.getMonth() + 1 + "" + dt.getDate()
-            if (dt2 == "918" || dt2 == "1213" ) {flag = true;}
-            if (flag) {
-                $("html").css({
-                    "filter": "gray !important",
-                    "filter": "progid:DXImageTransform.Microsoft.BasicImage(grayscale=1)",
-                    "filter": "grayscale(100%)",
-                    "-webkit-filter": "grayscale(100%)",
-                    "-moz-filter": "grayscale(100%)",
-                    "-ms-filter": "grayscale(100%)",
-                    "-o-filter": "grayscale(100%)"
-                });
-            }
-            })
+    $(function(){
+        var dt = new Date();
+        var dt2 = dt.getMonth() + 1 + "" + dt.getDate()
+        if (dt2 == "918" || dt2 == "1213" ) {
+            $("html").css({
+                "filter": "gray !important",
+                "filter": "progid:DXImageTransform.Microsoft.BasicImage(grayscale=1)",
+                "filter": "grayscale(100%)",
+                "-webkit-filter": "grayscale(100%)",
+                "-moz-filter": "grayscale(100%)",
+                "-ms-filter": "grayscale(100%)",
+                "-o-filter": "grayscale(100%)"
+            });
+        }
+    });
 </script>
 EOF;
         }
