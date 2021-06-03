@@ -6,7 +6,7 @@ if (!defined('__TYPECHO_ROOT_DIR__')) exit;
  *
  * @package ZSecurity
  * @author Zunmx
- * @version 1.1.0
+ * @version 1.1.1
  * @link https://www.zunmx.top
  *
  * @Source https://github.com/zunmx/ZSecurity
@@ -194,7 +194,8 @@ EOF;
         $form->addInput(new My_Title('btnTitle', NULL, NULL, _t('<span style="color: #ff8d5a">辅助功能</span>'), NULL));
         $name = new Typecho_Widget_Helper_Form_Element_Radio('autoHttps', array(0 => _t('禁用'), 1 => _t('启动')), 0, _t('自动跳转到HTTPS页面'), _t("要配置好https的有关配置哦"));
         $form->addInput($name);
-
+        $name = new Typecho_Widget_Helper_Form_Element_Radio('admin_disabledWAF', array(0 => _t('禁用'), 1 => _t('启动')), 0, _t('针对管理员停用防火墙'), _t("只有管理员权限时绕过WAF和反盗版"));
+        $form->addInput($name);
 
         self::printMyJS();
     }
@@ -335,25 +336,13 @@ EOF;
     public static function header()
     {
         $myself = Helper::options()->plugin('ZSecurity');
+
         if ($myself->autoHttps == "1") {//https
             if (!isset($_SERVER['HTTPS']) || $_SERVER['HTTPS'] != 'on') {
                 header('Location: https://' . $_SERVER['SERVER_NAME'] . $_SERVER['REQUEST_URI']);
                 exit();
             }
         }
-        if ($myself->antiDebug_switch == "1") {  // 禁止调试
-
-            echo $myself->antiDevtool;
-            if ($myself->antiDebug_Clear == "1") {
-                echo '<script>' . <<<EOF
-        function antiDebug_Clear(){
-            $("html").html("");
-        }
-EOF;
-                echo "</script>";
-            }
-        }
-        $myself = Helper::options()->plugin('ZSecurity');
         if ($myself->clickStyle == "1") { // 鼠标特效样式
             echo <<<EOF
 <script>
@@ -400,34 +389,29 @@ EOF;
             echo "<script type='text/javascript' src='" . self::STATIC_DIR . "/js/fireworks.js'></script>";
 
         }
+        // #############################################################WAF、Anti在后面#####################################################
+        if ($myself->admin_disabledWAF == "1") { // 管理员判断，管理员不启动WAF和AntiDebug
+            if ($isAdmin = Typecho_Widget::widget('Widget_User')->pass('administrator', true)) {
+                return;
+            }
+        }
+        if ($myself->antiDebug_switch == "1") {  // 禁止调试
+            echo $myself->antiDevtool;
+            if ($myself->antiDebug_Clear == "1") {
+                echo '<script>' . <<<EOF
+        function antiDebug_Clear(){
+            $("html").html("");
+        }
+EOF;
+                echo "</script>";
+            }
+        }
 
     }
 
     public static function footer()
     {
         $myself = Helper::options()->plugin('ZSecurity');
-        if ($myself->copyPlus == "1") { // 复制版权
-
-            echo "<script>" . <<<EOF
-$(function() {
-  document.body.addEventListener('copy', function (e) {
-    if (window.getSelection().toString() && window.getSelection().toString().length > 10) {
-        setClipboardText(e);
-    }
-}); 
-})
-function setClipboardText(event) {
-    var clipboardData = event.clipboardData || window.clipboardData;
-    if (clipboardData) {
-        event.preventDefault();
-        var htmlData = '著作权归作者所有。<br/>商业转载请联系作者获得授权，非商业转载请注明出处。<br/>作者：$myself->copyText<br/>链接：' + window.location.href + '<br/>来源：'+window.location.host+'/<br/><br/>'+ window.getSelection().toString();
-        clipboardData.setData('text/plain',htmlData.replaceAll("<br/>","\\r\\n"));
-    }
-}
-EOF;
-            echo "</script>";
-        }
-
         if ($myself->grayStyle == "1") { // 公祭日
             echo <<<EOF
 <script>
@@ -467,6 +451,36 @@ $("a").css("cursor", "url('{$imageDir}/{$mouseType}/link.cur'), pointer");
 </script>
 EOF;
         }
+
+
+        // #############################################################WAF、Anti在后面#####################################################
+        if ($myself->admin_disabledWAF == "1") { // 管理员判断，管理员不启动WAF和AntiDebug
+            if ($isAdmin = Typecho_Widget::widget('Widget_User')->pass('administrator', true)) {
+                return;
+            }
+        }
+        if ($myself->copyPlus == "1") { // 复制版权
+
+            echo "<script>" . <<<EOF
+$(function() {
+  document.body.addEventListener('copy', function (e) {
+    if (window.getSelection().toString() && window.getSelection().toString().length > 10) {
+        setClipboardText(e);
+    }
+}); 
+})
+function setClipboardText(event) {
+    var clipboardData = event.clipboardData || window.clipboardData;
+    if (clipboardData) {
+        event.preventDefault();
+        var htmlData = '著作权归作者所有。<br/>商业转载请联系作者获得授权，非商业转载请注明出处。<br/>作者：$myself->copyText<br/>链接：' + window.location.href + '<br/>来源：'+window.location.host+'/<br/><br/>'+ window.getSelection().toString();
+        clipboardData.setData('text/plain',htmlData.replaceAll("<br/>","\\r\\n"));
+    }
+}
+EOF;
+            echo "</script>";
+        }
+
 
     }
 

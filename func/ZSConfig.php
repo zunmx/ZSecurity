@@ -1,6 +1,6 @@
 <?php $zkInfo = array(
-    'ip' => "127.0.0.1:88",
-    'domain' => "127.0.0.1:88",
+    'ip' => "",
+    'domain' => "",
     'redirect' => "",
     'cc' => "1",
     'redis_ip' => "127.0.0.1",
