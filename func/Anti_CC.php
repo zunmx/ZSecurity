@@ -1,9 +1,9 @@
 <?php
 if ($_GET['action'] == 'testRedis') {
-    if($_POST["ZSecurityToken"]==md5("ZSecurity-%z^u&n#m@x-!".strval($_SERVER["PATH"]))){
+    if ($_POST["ZSecurityToken"] == md5("ZSecurity-%z^u&n#m@x-!" . strval($_SERVER["PATH"]))) {
         testRedis();
-    }else{
-        header("location: http://".$_SERVER["HTTP_HOST"]); //跳转到首页。
+    } else {
+        exit();// 未通过认证
     }
 }
 include_once("ZSConfig.php");
@@ -45,6 +45,12 @@ function log_redis()
         $conn->auth($pwd);
         $conn->lPush($_SERVER["REMOTE_ADDR"], $_SERVER["REQUEST_URI"] . "<=U-D=>" . time());
         $conn->expireAt($_SERVER["REMOTE_ADDR"], intval(time()) + $cc_ip_clean);
+
+        if ($conn->get("admin_ip") != "" && $conn->get("admin_ip") == $_SERVER["REMOTE_ADDR"]) {
+            $conn->del($_SERVER["REMOTE_ADDR"]);
+            $conn->del("b" . $_SERVER["REMOTE_ADDR"]);
+
+        }
 
         // 判断IP是否被封锁
         if ($conn->get("b" . $_SERVER["REMOTE_ADDR"]) == "1") {

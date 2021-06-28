@@ -6,7 +6,7 @@ if (!defined('__TYPECHO_ROOT_DIR__')) exit;
  *
  * @package ZSecurity
  * @author Zunmx
- * @version 1.1.1
+ * @version 1.1.2
  * @link https://www.zunmx.top
  *
  * @Source https://github.com/zunmx/ZSecurity
@@ -200,6 +200,12 @@ EOF;
         self::printMyJS();
     }
 
+    public static function isAdmin()
+    {
+        $isAdmin = Typecho_Widget::widget('Widget_User')->pass('administrator', true);
+        return $isAdmin;
+    }
+
     public static function activeWAF()
     {
         $myself = Helper::options()->plugin('ZSecurity'); // 获取配置
@@ -390,10 +396,13 @@ EOF;
 
         }
         // #############################################################WAF、Anti在后面#####################################################
-        if ($myself->admin_disabledWAF == "1") { // 管理员判断，管理员不启动WAF和AntiDebug
-            if ($isAdmin = Typecho_Widget::widget('Widget_User')->pass('administrator', true)) {
-                return;
-            }
+        if ($myself->admin_disabledWAF == "1" && self::isAdmin()) { // 管理员判断，管理员不启动WAF和AntiDebug
+            $conn = new Redis();  // TODO: 会拖慢效率，那位大佬会写PHP的单例，我试了试每次都会创建，有点懵。
+            $conn->pconnect($myself->anti_cc_redisIp, $myself->anti_cc_redisPort);
+            $conn->auth($myself->anti_cc_redispasswd);
+            $conn->set("admin_ip", $_SERVER["REMOTE_ADDR"], 300); // 300s
+
+            return;
         }
         if ($myself->antiDebug_switch == "1") {  // 禁止调试
             echo $myself->antiDevtool;

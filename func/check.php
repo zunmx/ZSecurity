@@ -1,7 +1,7 @@
 <?php
 header("X-Powered-By:ALC_SmileLang");
 header("Server:ALC_WebServer");
-header("Waf:ALC_WAF_0xf2");
+header("Waf:ALC_WAF_0xf3");
 include_once("Anti_CC.php");
 include_once("ZSConfig.php");
 if ($zkInfo["cc"] == "1") {
