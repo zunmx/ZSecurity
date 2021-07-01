@@ -27,7 +27,7 @@ function testRedis()
         $redis->auth(strval($_POST['anti_cc_redispasswd']));
         $redis->set("ALC_ZSecurityTest", "ZSecurity_Redis_Link_Test", 10);
         echo "[√] 连接成功";
-    } catch (\Exception $e) {
+    } catch (Exception $e) {
         echo "[×] 连接失败";
     }
 }
