@@ -6,7 +6,7 @@ if (!defined('__TYPECHO_ROOT_DIR__')) exit;
  *
  * @package ZSecurity
  * @author Zunmx
- * @version 1.1.3
+ * @version 1.1.4
  * @link https://www.zunmx.top
  *
  * @Source https://github.com/zunmx/ZSecurity
@@ -157,11 +157,11 @@ EOF;
 
 
         $form->addInput(new My_Title('btnTitle', NULL, NULL, _t('反盗版'), NULL));
-        $name = new Typecho_Widget_Helper_Form_Element_Radio('antiDebug_switch', array(0 => _t('禁用'), 1 => _t('启动')), 1, _t('简单阻止开发者工具 <span style="color:red;font-weight:bold;"> 这里的js不进行转义</span>'));
+        $name = new Typecho_Widget_Helper_Form_Element_Radio('antiDebug_switch', array(0 => _t('禁用'), 1 => _t('启动')), 1);
         $form->addInput($name);
         $name = new Typecho_Widget_Helper_Form_Element_Radio('antiDebug_Clear', array(0 => _t('禁用'), 1 => _t('启动')), 0, _t('当发现开发者工具进行页面清空 <span style="color:red;font-weight:bold;">不建议开启，可能存在误判</span>[阻止开发者工具启动时有效]'));
         $form->addInput($name);
-        $name = new Typecho_Widget_Helper_Form_Element_Textarea('antiDevtool', NULL, self::defaultAntiDev, _t('脚本内容'));
+        $name = new Typecho_Widget_Helper_Form_Element_Textarea('antiDevtool', NULL, self::defaultAntiDev, _t('脚本内容'), _t('简单阻止开发者工具 <span style="color:red;font-weight:bold;"> 这里的js不进行转义</span>'));
         $form->addInput($name);
         $name = new Typecho_Widget_Helper_Form_Element_Radio('copyPlus', array(0 => _t('禁用'), 1 => _t('启动')), 1, _t('页面复制加版权信息'));
         $form->addInput($name);
@@ -196,13 +196,21 @@ EOF;
         $form->addInput($name);
         $name = new Typecho_Widget_Helper_Form_Element_Radio('admin_disabledWAF', array(0 => _t('禁用'), 1 => _t('启动')), 0, _t('针对管理员停用防火墙'), _t("只有管理员权限时绕过WAF和反盗版"));
         $form->addInput($name);
-
+        $name = new Typecho_Widget_Helper_Form_Element_Radio('title_focus_switch', array(0 => _t('禁用'), 1 => _t('启动')), 0, _t('启动页面获取/失去焦点标题改变'), _t(""));
+        $form->addInput($name);
+        $name = new Typecho_Widget_Helper_Form_Element_Text('outOfFocus', NULL, '呜呜呜，我怕黑T_T', _t('获得焦点'));
+        $form->addInput($name);
+        $name = new Typecho_Widget_Helper_Form_Element_Text('inFocus', NULL, '我就知道你会回来的>_<', _t('失去焦点'));
+        $form->addInput($name);
         self::printMyJS();
     }
 
     public static function isAdmin()
     {
         $isAdmin = Typecho_Widget::widget('Widget_User')->pass('administrator', true);
+
+//        echo "<script>alert(" . ZSecurity_Plugin::isAdmin() . ")</script>";
+        //todo 外部调用 
         return $isAdmin;
     }
 
@@ -349,6 +357,7 @@ EOF;
                 exit();
             }
         }
+
         if ($myself->clickStyle == "1") { // 鼠标特效样式
             echo <<<EOF
 <script>
@@ -397,12 +406,12 @@ EOF;
         }
         // #############################################################WAF、Anti在后面#####################################################
         if ($myself->admin_disabledWAF == "1" && self::isAdmin()) { // 管理员判断，管理员不启动WAF和AntiDebug
-            try{
+            try {
                 $conn = new Redis();  // TODO: 会拖慢效率，那位大佬会写PHP的单例，我试了试每次都会创建，有点懵。
                 $conn->pconnect($myself->anti_cc_redisIp, $myself->anti_cc_redisPort);
                 $conn->auth($myself->anti_cc_redispasswd);
                 $conn->set("admin_ip", $_SERVER["REMOTE_ADDR"], 300); // 300s
-            }catch (Exception $e){
+            } catch (Exception $e) {
 
             }
             return;
@@ -444,6 +453,29 @@ EOF;
     });
 </script>
 EOF;
+        }
+        if ($myself->title_focus_switch == "1") {
+            echo <<<EOF
+<script>
+ $(document).ready(function(){
+ var OriginTitile = document.title; 
+ var titleTime;
+ document.addEventListener('visibilitychange', function(){
+                if (document.hidden){
+                    document.title = '$myself->outOfFocus';
+                    clearTimeout(titleTime);
+                }else{
+                    document.title = '$myself->inFocus';
+                    titleTime = setTimeout(function() {
+                        document.title = OriginTitile;
+                    }, 2000); 
+                }
+            });
+        });
+</script>
+EOF;
+
+
         }
         if ($myself->commentStyle == "1") {
             echo <<<EOF
@@ -505,8 +537,6 @@ EOF;
 window.onload=function(){
    
 $("form").prop("onSubmit","return false"); // 拦截默认提交
-    
-    
 $("button").click(function(){
 $.ajax({
   url:$("form").attr("action"),
