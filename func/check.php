@@ -24,7 +24,9 @@ if ($zkInfo["ip"] == "") {
 if ($zkInfo["domain"] == "") {
 //    zlog("domain留空");
 } else {
-    if (strcmp($_SERVER['HTTP_HOST'], $zkInfo["domain"]) != 0) { // 主机名不等于域名
+    $domain = $zkInfo["domain"];
+    $explode = explode(",", $domain);
+    if (!in_array($_SERVER["HTTP_HOST"],$explode)){
         blockPage($zkInfo["redirect"]);
         exit();
     }
@@ -36,7 +38,7 @@ function blockPage($url)
     if ($url != "") {
         header("location: " . $url);
     }
-    echo @readfile("block.html", true);
+    @readfile("block.html", true);
     ob_end_flush();
     exit();
 }

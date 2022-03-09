@@ -6,7 +6,7 @@ if (!defined('__TYPECHO_ROOT_DIR__')) exit;
  *
  * @package ZSecurity
  * @author Zunmx
- * @version 1.1.4
+ * @version 1.1.5
  * @link https://www.zunmx.top
  *
  * @Source https://github.com/zunmx/ZSecurity
@@ -118,7 +118,7 @@ EOF;
 
         $name = new Typecho_Widget_Helper_Form_Element_Text('host_ip', NULL, gethostbyname($_SERVER["HTTP_HOST"]), _t('禁止通过IP访问'), _t('<span style="color:red;font-weight:bold;">通常设置为公网IP，如果您的公网IP为10.10.121.43，服务端口号为88，那么这里需要设置为10.10.121.43:88，注意英文半角的端口号，如果默认80端口，可以不写。不需要加协议名。留空为不设置</span>'));
         $form->addInput($name);
-        $name = new Typecho_Widget_Helper_Form_Element_Text('domainLock', NULL, $_SERVER["HTTP_HOST"], _t('域名绑定'), _t("检查域名是否为设置的域名，相当于白名单，只能通过域名访问。<br/>" . '<span style="color:red;font-weight:bold;">如果设置的域名不正确，可能导致无法进入网站，留空为不设置，否则需要填写自己的域名！不需要加协议，如果有端口加上端口号，规则同上</span>'));
+        $name = new Typecho_Widget_Helper_Form_Element_Text('domainLock', NULL, $_SERVER["HTTP_HOST"], _t('域名绑定'), _t("检查域名是否为设置的域名，相当于白名单，只能通过域名访问。<br/>" . '<span style="color:red;font-weight:bold;">如果设置的域名不正确，可能导致无法进入网站，留空为不设置，否则需要填写自己的域名！不需要加协议，如果有端口加上端口号，规则同上，多个域名通过半角逗号分割。</span>'));
         $form->addInput($name);
         $name = new Typecho_Widget_Helper_Form_Element_Text('redirect', NULL, "", _t('违规跳转页面'), _t('<span style="color:red;font-weight:bold;">当违反WAF规则时，跳转的页面，需要详细地址(带协议名例如http://127.0.0.1)，不填为插件默认的响应</span>'));
         $form->addInput($name);
@@ -210,7 +210,7 @@ EOF;
         $isAdmin = Typecho_Widget::widget('Widget_User')->pass('administrator', true);
 
 //        echo "<script>alert(" . ZSecurity_Plugin::isAdmin() . ")</script>";
-        //todo 外部调用 
+        //todo 外部调用
         return $isAdmin;
     }
 
@@ -387,7 +387,7 @@ EOF;
 EOF;
             switch ($myself->JSCDN) {
                 case "0":
-                    echo '<script type="text/javascript" src= ".self::STATIC_DIR."/js/anime2.2.0.min.js"></script>';
+                    echo '<script type="text/javascript" src= "'. self::STATIC_DIR . '/js/anime2.2.0.min.js"></script>';
                     break;
                 case "1":
                     echo '<script src="https://cdn.bootcdn.net/ajax/libs/animejs/2.2.0/anime.js"></script>';
