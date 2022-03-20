@@ -1,12 +1,18 @@
 <?php
 if (!defined('__TYPECHO_ROOT_DIR__')) exit;
+if (!defined('__TYPECHO_CLASS_ALIASES__')){
 
+require_once(__DIR__."/libs/ot.php");
+}
+else{
+require_once(__DIR__."/libs/nt.php");
+}
 /**
  * 自用的文章版权添加以及防调试能力，并且添加了多种特效。
  *
  * @package ZSecurity
  * @author Zunmx
- * @version 1.1.5
+ * @version 1.1.6
  * @link https://www.zunmx.top
  *
  * @Source https://github.com/zunmx/ZSecurity
@@ -358,6 +364,31 @@ EOF;
             }
         }
 
+        if ($myself->clickStyle != "0"){// 鼠标特效样式
+            echo '<canvas id="fireworks" style="position:fixed;left:0;top:0;pointer-events:none;z-index: 999999"></canvas>';
+            switch ($myself->JSCDN) {
+                case "0":
+                    if($myself->clickStyle == "2")echo '<script type="text/javascript" src= "'. self::STATIC_DIR . '/js/anime2.2.0.min.js"></script>';
+                    echo '<script type="text/javascript" src= "'. self::STATIC_DIR . '/js/jquery.js"></script>';
+                    break;
+                case "1":
+                    if($myself->clickStyle == "2")echo '<script src="https://cdn.bootcdn.net/ajax/libs/animejs/2.2.0/anime.js"></script>';
+                    echo '<script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.6.0/jquery.min.js"></script>';
+                    break;
+                case "2":
+                    if($myself->clickStyle == "2")echo '<script type="text/javascript" src= "https://lib.baomitu.com/animejs/2.2.0/anime.min.js"></script>';
+                    echo '<script type="text/javascript" src="https://lib.baomitu.com/jquery/3.6.0/jquery.js"></script>';
+                    break;
+                case "3":
+                    if($myself->clickStyle == "2")echo '<script type="text/javascript" src= "https://cdn.staticfile.org/animejs/2.2.0/anime.min.js"></script>';
+                    echo '<script type="text/javascript" src= "https://cdn.staticfile.org/jquery/3.6.0/jquery.min.js"></script>';
+                    break;
+                default :
+                    if($myself->clickStyle == "2")echo '<script type="text/javascript" src= ".self::STATIC_DIR."/js/anime2.2.0.min.js"></script>';
+                    echo '<script type="text/javascript" src= ".self::STATIC_DIR."/js/jquery.js"></script>';
+            }
+            echo "<script type='text/javascript' src='" . self::STATIC_DIR . "/js/fireworks.js'></script>";
+        }
         if ($myself->clickStyle == "1") { // 鼠标特效样式
             echo <<<EOF
 <script>
@@ -380,29 +411,6 @@ var a = new Array("🙂", "🙋‍", "😀", "😃", "😄", "😁", "😆", "�
  //启动事件，鼠标特效
 </script>
 EOF;
-        }
-        if ($myself->clickStyle == "2") { // 鼠标特效样式
-            echo <<<EOF
-<canvas id="fireworks" style="position:fixed;left:0;top:0;pointer-events:none;z-index: 999999"></canvas>
-EOF;
-            switch ($myself->JSCDN) {
-                case "0":
-                    echo '<script type="text/javascript" src= "'. self::STATIC_DIR . '/js/anime2.2.0.min.js"></script>';
-                    break;
-                case "1":
-                    echo '<script src="https://cdn.bootcdn.net/ajax/libs/animejs/2.2.0/anime.js"></script>';
-                    break;
-                case "2":
-                    echo '<script type="text/javascript" src= "https://lib.baomitu.com/animejs/2.2.0/anime.min.js"></script>';
-                    break;
-                case "3":
-                    echo '<script type="text/javascript" src= "https://cdn.staticfile.org/animejs/2.2.0/anime.min.js"></script>';
-                    break;
-                default :
-                    echo '<script type="text/javascript" src= ".self::STATIC_DIR."/js/anime2.2.0.min.js"></script>';
-            }
-            echo "<script type='text/javascript' src='" . self::STATIC_DIR . "/js/fireworks.js'></script>";
-
         }
         // #############################################################WAF、Anti在后面#####################################################
         if ($myself->admin_disabledWAF == "1" && self::isAdmin()) { // 管理员判断，管理员不启动WAF和AntiDebug
@@ -581,34 +589,3 @@ EOF;
 
     }
 }
-
-class My_Title extends Typecho_Widget_Helper_Form_Element
-{
-    public function label($value)
-    {
-        /** 创建标题元素 */
-        if (empty($this->label)) {
-            $this->label = new Typecho_Widget_Helper_Layout('label', array('class' => 'typecho-label', 'style' => 'font-size: 1.5em;border-bottom: 1px #ddd solid;padding-top:1em;'));
-            $this->container($this->label);
-        }
-        $this->label->html($value);
-        return $this;
-    }
-
-    public function input($name = NULL, array $options = NULL)
-    {
-        $input = new Typecho_Widget_Helper_Layout('p', array());
-        $this->container($input);
-        $this->inputs[] = $input;
-        return $input;
-    }
-
-    protected function _value($value)
-    {
-    }
-
-
-}
-
-
-

@@ -3,6 +3,7 @@ if ($_GET['action'] == 'testRedis') {
     if ($_POST["ZSecurityToken"] == md5("ZSecurity-%z^u&n#m@x-!" . strval($_SERVER["PATH"]))) {
         testRedis();
     } else {
+		echo '接口校验失败';
         exit();// 未通过认证
     }
 }
