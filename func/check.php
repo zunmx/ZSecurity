@@ -12,6 +12,22 @@ ob_start();
 //{
 //    echo '<script>console.log("' . $content . '")</script>';
 //}
+
+if ($zkInfo["anti_EvilSpiderUA"] = "1") {
+    $UA = $_SERVER['HTTP_USER_AGENT'];
+    $BLACK_UA = array('python-requests/', 'Go-http-client', 'curl/', 'Wget/');
+    if ($UA == ''  || strlen($UA) <= 10) {
+        blockPage($zkInfo["redirect"]);
+    } else {
+        for ($i = 0; $i < count($BLACK_UA); $i++) {
+            if ((stripos($UA,$BLACK_UA[$i])) !== FALSE ) {
+                blockPage($zkInfo["redirect"]);
+            } else {
+            }
+        }
+    }
+}
+
 if ($zkInfo["ip"] == "") {
 //    zlog("ip留空");
 } else {
@@ -26,7 +42,7 @@ if ($zkInfo["domain"] == "") {
 } else {
     $domain = $zkInfo["domain"];
     $explode = explode(",", $domain);
-    if (!in_array($_SERVER["HTTP_HOST"],$explode)){
+    if (!in_array($_SERVER["HTTP_HOST"], $explode)) {
         blockPage($zkInfo["redirect"]);
         exit();
     }

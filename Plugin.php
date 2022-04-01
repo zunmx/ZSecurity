@@ -12,7 +12,7 @@ require_once(__DIR__."/libs/nt.php");
  *
  * @package ZSecurity
  * @author Zunmx
- * @version 1.1.6
+ * @version 1.1.7
  * @link https://www.zunmx.top
  *
  * @Source https://github.com/zunmx/ZSecurity
@@ -130,6 +130,8 @@ EOF;
         $form->addInput($name);
         $name = new Typecho_Widget_Helper_Form_Element_Radio('anti_iframe', array(0 => _t('禁用'), 1 => _t('启动')), 1, _t('禁止iframe嵌套'), _t('阻止别人通过iframe标签显示在其他网站上'));
         $form->addInput($name);
+        $name = new Typecho_Widget_Helper_Form_Element_Radio('anti_EvilSpiderUA', array(0 => _t('禁用'), 1 => _t('启动')), 0, _t('禁止UA为空和常见恶意爬虫的浏览器访问'), _t('禁止UA为空和常见恶意爬虫的浏览器访问，比如Python的Request、Go-http-client，经过长期观察UA字符长度小于10也不正常'));
+        $form->addInput($name);
 
 
         $queryBtn = new Typecho_Widget_Helper_Layout("hr", array());
@@ -241,6 +243,7 @@ EOF;
             $cc_ip_allow = $myself->anti_cc_ip_allow;
             $cc_ip_clean = $myself->anti_cc_block_clean;
             $cc_redispasswd = $myself->anti_cc_redispasswd;
+            $anti_EvilSpiderUA = $myself->anti_EvilSpiderUA;
 
             // 写入文件
             $zkInfo = "<?php $" . <<<EOF
@@ -257,6 +260,7 @@ zkInfo = array(
     'cc_ip_allow' => "$cc_ip_allow",
     'cc_ip_clean' => "$cc_ip_clean",
     'cc_redispasswd' => "$cc_redispasswd",
+    'anti_EvilSpiderUA' => "$anti_EvilSpiderUA"
 );
 ?>
 EOF;
